@@ -54,11 +54,15 @@ public class PitService {
         });
     }
     
-    public List<PitSensorData> getPitSensorData(Long pitId) {
+    public List<PitSensorData> getPitSensorData(Long pitId, Integer hours) {
+        if (hours != null) {
+            return sensorDataRepository.findByPitIdAndRecordedAtAfterOrderByRecordedAtDesc(
+                    pitId, java.time.LocalDateTime.now().minusHours(hours));
+        }
         return sensorDataRepository.findTop10ByPitIdOrderByRecordedAtDesc(pitId);
     }
     
     public List<PitSensorData> getLatestSensorData() {
-        return sensorDataRepository.findLatestForAllPits();
+        return sensorDataRepository.findLatestForAllPitsFast();
     }
 }

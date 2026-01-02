@@ -1,17 +1,18 @@
 import { create } from 'zustand'
 
 interface DashboardStats {
-  total_pits: number
-  fermenting_pits: number
-  idle_pits: number
-  total_devices: number
-  running_devices: number
-  warning_devices: number
-  error_devices: number
-  active_alarms: number
-  today_production: number
-  avg_temperature: number
-  avg_humidity: number
+  totalPits: number
+  normalPits: number
+  warningPits: number
+  alarmPits: number
+  totalDevices: number
+  runningDevices: number
+  faultDevices: number
+  activeAlarms: number
+  inProgressBatches: number
+  totalProduction: number
+  avgTemperature: number
+  avgHumidity: number
 }
 
 interface AppState {

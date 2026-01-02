@@ -17,15 +17,18 @@ const { Option } = Select
 
 interface Batch {
   id: number
-  batch_code: string
-  grain_type: string
-  grain_weight: number
+  batchNo: string
+  productType: string
+  targetVolume: number
+  actualVolume: number | null
   status: string
-  wine_grade: string | null
-  created_at: string
+  qualityScore: number | null
+  createdAt: string
 }
 
 interface ProcessParam {
+  id: number
+  processName: string
   name: string
   value: number
   unit: string
@@ -69,8 +72,9 @@ export default function ProductionManage() {
   const handleCreateBatch = async (values: any) => {
     try {
       await productionApi.createBatch({
-        batch_code: `PC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(batches.length + 1).padStart(4, '0')}`,
-        ...values,
+        batchNo: `BATCH-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(batches.length + 1).padStart(4, '0')}`,
+        productType: values.grain_type,
+        targetVolume: values.grain_weight,
       })
       message.success('批次创建成功')
       setModalVisible(false)
@@ -83,42 +87,30 @@ export default function ProductionManage() {
 
   const getStatusTag = (status: string) => {
     const config: Record<string, { color: string; text: string }> = {
-      pending: { color: 'default', text: '待开始' },
-      processing: { color: 'processing', text: '进行中' },
+      planning: { color: 'default', text: '待开始' },
+      in_progress: { color: 'processing', text: '进行中' },
       completed: { color: 'success', text: '已完成' },
     }
     const { color, text } = config[status] || { color: 'default', text: status }
     return <Tag color={color}>{text}</Tag>
   }
 
-  const getGradeTag = (grade: string | null) => {
-    if (!grade) return '-'
-    const colors: Record<string, string> = {
-      '特级': 'gold',
-      '优级': 'green',
-      '一级': 'blue',
-      '二级': 'default',
-      '三级': 'default',
-    }
-    return <Tag color={colors[grade] || 'default'}>{grade}</Tag>
-  }
-
   const columns = [
     {
       title: '批次编号',
-      dataIndex: 'batch_code',
-      key: 'batch_code',
+      dataIndex: 'batchNo',
+      key: 'batchNo',
     },
     {
-      title: '粮食类型',
-      dataIndex: 'grain_type',
-      key: 'grain_type',
+      title: '产品类型',
+      dataIndex: 'productType',
+      key: 'productType',
     },
     {
-      title: '粮食重量',
-      dataIndex: 'grain_weight',
-      key: 'grain_weight',
-      render: (weight: number) => `${weight.toFixed(0)} kg`,
+      title: '目标产量',
+      dataIndex: 'targetVolume',
+      key: 'targetVolume',
+      render: (volume: number) => `${volume.toFixed(0)} kg`,
     },
     {
       title: '状态',
@@ -127,15 +119,9 @@ export default function ProductionManage() {
       render: (status: string) => getStatusTag(status),
     },
     {
-      title: '酒品等级',
-      dataIndex: 'wine_grade',
-      key: 'wine_grade',
-      render: (grade: string) => getGradeTag(grade),
-    },
-    {
       title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       render: (time: string) => new Date(time).toLocaleString(),
     },
   ]
@@ -145,28 +131,28 @@ export default function ProductionManage() {
     tooltip: { trigger: 'axis' },
     legend: { 
       data: ['产量', '质量合格率'],
-      textStyle: { color: '#888' },
+      textStyle: { color: '#b7bcc7' },
       bottom: 0
     },
     grid: { left: 60, right: 60, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: trends.map(t => t.date),
-      axisLabel: { color: '#888' },
+      axisLabel: { color: '#8b92a1' },
     },
     yAxis: [
       {
         type: 'value',
         name: '产量(kg)',
-        axisLabel: { color: '#888' },
-        splitLine: { lineStyle: { color: '#303030' } },
+        axisLabel: { color: '#8b92a1' },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       },
       {
         type: 'value',
         name: '合格率(%)',
         min: 0,
         max: 100,
-        axisLabel: { color: '#888' },
+        axisLabel: { color: '#8b92a1' },
         splitLine: { show: false },
       }
     ],
@@ -175,7 +161,7 @@ export default function ProductionManage() {
         name: '产量',
         type: 'bar',
         data: trends.map(t => t.production),
-        itemStyle: { color: '#1890ff' },
+        itemStyle: { color: '#5bc0ff' },
       },
       {
         name: '质量合格率',
@@ -183,7 +169,7 @@ export default function ProductionManage() {
         yAxisIndex: 1,
         data: trends.map(t => t.quality_rate),
         smooth: true,
-        itemStyle: { color: '#52c41a' },
+        itemStyle: { color: '#42e07b' },
       }
     ]
   }
@@ -200,35 +186,35 @@ export default function ProductionManage() {
       {/* 统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic title="总批次" value={stats?.total || 0} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="进行中" 
               value={stats?.processing || 0}
-              valueStyle={{ color: '#1890ff' }}
+              valueStyle={{ color: 'var(--accent-blue)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="已完成" 
               value={stats?.completed || 0}
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: 'var(--accent-green)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="今日产量" 
               value={stats?.today_production || 0}
               suffix="kg"
-              valueStyle={{ color: '#faad14' }}
+              valueStyle={{ color: 'var(--accent-yellow)' }}
             />
           </Card>
         </Col>
@@ -239,8 +225,8 @@ export default function ProductionManage() {
         <Col xs={24} lg={16}>
           <Card 
             title="7日产量趋势"
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={productionChartOption} style={{ height: 300 }} />
           </Card>
@@ -253,13 +239,14 @@ export default function ProductionManage() {
                 工艺参数
               </Space>
             }
-            style={{ background: '#1f1f1f', height: '100%' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+            style={{ height: '100%' }}
           >
             <div style={{ maxHeight: 300, overflow: 'auto' }}>
               {Object.entries(params).slice(0, 3).map(([process, paramList]) => (
                 <div key={process} style={{ marginBottom: 16 }}>
-                  <Text strong style={{ color: '#1890ff' }}>{process}</Text>
+                  <Text strong style={{ color: 'var(--accent-blue)' }}>{process}</Text>
                   {paramList.slice(0, 2).map(p => (
                     <div 
                       key={p.name}
@@ -267,7 +254,7 @@ export default function ProductionManage() {
                         display: 'flex', 
                         justifyContent: 'space-between',
                         padding: '4px 0',
-                        borderBottom: '1px solid #303030'
+                        borderBottom: '1px solid rgba(255,255,255,0.06)'
                       }}
                     >
                       <Text type="secondary">{p.name}</Text>
@@ -284,8 +271,9 @@ export default function ProductionManage() {
       {/* 批次列表 */}
       <Card 
         title="生产批次"
-        style={{ background: '#1f1f1f', marginTop: 16 }}
-        headStyle={{ borderBottom: '1px solid #303030' }}
+        className="glass-card"
+        styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+        style={{ marginTop: 16 }}
         extra={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={loadData}>
@@ -330,10 +318,10 @@ export default function ProductionManage() {
         >
           <Form.Item
             name="grain_type"
-            label="粮食类型"
-            rules={[{ required: true, message: '请选择粮食类型' }]}
+            label="产品类型"
+            rules={[{ required: true, message: '请选择产品类型' }]}
           >
-            <Select placeholder="选择粮食类型">
+            <Select placeholder="选择产品类型">
               <Option value="高粱">高粱</Option>
               <Option value="小麦">小麦</Option>
               <Option value="玉米">玉米</Option>
@@ -344,8 +332,8 @@ export default function ProductionManage() {
           
           <Form.Item
             name="grain_weight"
-            label="粮食重量 (kg)"
-            rules={[{ required: true, message: '请输入粮食重量' }]}
+            label="目标产量 (kg)"
+            rules={[{ required: true, message: '请输入目标产量' }]}
           >
             <InputNumber min={100} max={10000} style={{ width: '100%' }} />
           </Form.Item>

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,7 +52,7 @@ public class DashboardService {
         stats.setTotalProduction(Optional.ofNullable(batchRepository.sumCompletedVolume()).orElse(0.0));
         
         // 平均温湿度和功率
-        List<PitSensorData> latestData = pitSensorDataRepository.findLatestForAllPits();
+        List<PitSensorData> latestData = pitSensorDataRepository.findLatestForAllPitsFast();
         if (!latestData.isEmpty()) {
             stats.setAvgTemperature(latestData.stream()
                 .mapToDouble(d -> d.getTemperature() != null ? d.getTemperature() : 0)
@@ -69,7 +70,7 @@ public class DashboardService {
     
     public List<HeatmapData> getHeatmap() {
         List<Pit> pits = pitRepository.findAll();
-        List<PitSensorData> latestData = pitSensorDataRepository.findLatestForAllPits();
+        List<PitSensorData> latestData = pitSensorDataRepository.findLatestForAllPitsFast();
         
         Map<Long, PitSensorData> dataMap = latestData.stream()
             .collect(Collectors.toMap(PitSensorData::getPitId, d -> d, (a, b) -> a));
@@ -90,6 +91,52 @@ public class DashboardService {
                 hd.setPhValue(data.getPhValue());
             }
             return hd;
+        }).collect(Collectors.toList());
+    }
+
+    public Map<String, Object> getOverview() {
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("alarm_trend", buildAlarmTrend());
+        overview.put("production_progress", buildProductionProgress());
+        return overview;
+    }
+
+    private List<Map<String, Object>> buildAlarmTrend() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start = now.minusHours(24);
+        List<Map<String, Object>> trend = new ArrayList<>();
+
+        Map<Long, Long> bucketCounts = new HashMap<>();
+        alarmRepository.findByCreatedAtAfter(start).forEach(alarm -> {
+            long bucket = ChronoUnit.HOURS.between(start, alarm.getCreatedAt());
+            if (bucket >= 0 && bucket < 24) {
+                bucketCounts.put(bucket, bucketCounts.getOrDefault(bucket, 0L) + 1);
+            }
+        });
+
+        for (int i = 0; i < 24; i++) {
+            LocalDateTime hour = start.plusHours(i);
+            Map<String, Object> point = new HashMap<>();
+            point.put("hour", hour.getHour() + ":00");
+            point.put("count", bucketCounts.getOrDefault((long) i, 0L));
+            trend.add(point);
+        }
+        return trend;
+    }
+
+    private List<Map<String, Object>> buildProductionProgress() {
+        LocalDateTime now = LocalDateTime.now();
+        return batchRepository.findByStatus("in_progress").stream().map(batch -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("batch_code", batch.getBatchNo());
+            item.put("grain_type", batch.getProductType());
+            double progress = 0.0;
+            if (batch.getStartDate() != null) {
+                long hours = ChronoUnit.HOURS.between(batch.getStartDate(), now);
+                progress = Math.min(100.0, hours / (24.0 * 7.0) * 100.0);
+            }
+            item.put("progress", Math.round(progress));
+            return item;
         }).collect(Collectors.toList());
     }
 }

@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,6 +28,10 @@ public class AlarmService {
     public List<Alarm> getRecentAlarms() {
         return alarmRepository.findTop20ByOrderByCreatedAtDesc();
     }
+
+    public List<Alarm> getAlarmsByLevelAndStatus(String level, String status) {
+        return alarmRepository.findByLevelAndStatus(level, status);
+    }
     
     public Page<Alarm> getAlarmsByStatus(String status, int page, int size) {
         return alarmRepository.findByStatusOrderByCreatedAtDesc(status, PageRequest.of(page, size));
@@ -32,6 +39,23 @@ public class AlarmService {
     
     public Optional<Alarm> getAlarmById(Long id) {
         return alarmRepository.findById(id);
+    }
+
+    public Map<String, Object> getStats() {
+        Map<String, Object> stats = new HashMap<>();
+        long active = alarmRepository.countByStatus("active");
+        long total = alarmRepository.count();
+        long today = alarmRepository.findByCreatedAtAfter(LocalDateTime.now()
+                .with(LocalTime.MIN)).size();
+        Map<String, Long> byLevel = new HashMap<>();
+        alarmRepository.countActiveByLevel().forEach(row ->
+            byLevel.put((String) row[0], (Long) row[1])
+        );
+        stats.put("active", active);
+        stats.put("total", total);
+        stats.put("today", today);
+        stats.put("by_level", byLevel);
+        return stats;
     }
     
     @Transactional

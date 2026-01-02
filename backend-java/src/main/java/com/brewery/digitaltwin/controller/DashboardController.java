@@ -26,8 +26,8 @@ public class DashboardController {
     }
     
     @GetMapping("/overview")
-    public ApiResponse<DashboardStats> getOverview() {
-        return ApiResponse.success(dashboardService.getStats());
+    public ApiResponse<Map<String, Object>> getOverview() {
+        return ApiResponse.success(dashboardService.getOverview());
     }
     
     @GetMapping("/realtime-metrics")

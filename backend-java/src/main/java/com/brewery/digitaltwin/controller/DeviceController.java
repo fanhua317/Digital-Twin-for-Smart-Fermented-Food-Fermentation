@@ -93,12 +93,12 @@ public class DeviceController {
     public ApiResponse<List<DeviceData>> getDeviceData(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "24") Integer hours) {
-        return ApiResponse.success(deviceService.getDeviceData(id));
+        return ApiResponse.success(deviceService.getDeviceData(id, hours));
     }
     
     @GetMapping("/{id}/data/latest")
     public ApiResponse<DeviceData> getLatestDeviceData(@PathVariable Long id) {
-        List<DeviceData> data = deviceService.getDeviceData(id);
+        List<DeviceData> data = deviceService.getDeviceData(id, null);
         if (data.isEmpty()) {
             return ApiResponse.error("暂无设备数据");
         }

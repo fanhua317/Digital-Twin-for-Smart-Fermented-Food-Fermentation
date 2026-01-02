@@ -30,6 +30,7 @@ public class SimulatorService {
     private final AlarmRepository alarmRepository;
     private final RealtimeWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
+    private final DashboardService dashboardService;
     
     @Value("${app.simulator.enabled:true}")
     private boolean enabled;
@@ -45,9 +46,19 @@ public class SimulatorService {
             generatePitSensorData();
             generateDeviceData();
             maybeGenerateAlarm();
+            broadcastDashboardUpdate();
         } catch (Exception e) {
             log.error("数据生成失败", e);
         }
+    }
+
+    @Scheduled(fixedDelayString = "${app.simulator.cleanup-interval:3600000}")
+    @Transactional
+    public void cleanupOldData() {
+        if (!enabled) return;
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+        pitSensorDataRepository.deleteByRecordedAtBefore(cutoff);
+        deviceDataRepository.deleteByRecordedAtBefore(cutoff);
     }
     
     private void generatePitSensorData() {
@@ -133,10 +144,10 @@ public class SimulatorService {
             if (!device.getStatus().equals(newStatus)) {
                 device.setStatus(newStatus);
                 device.setUpdatedAt(LocalDateTime.now());
-                deviceRepository.save(device);
             }
             
             device.setRunningHours(device.getRunningHours() + 0.0014); // ~5秒
+            deviceRepository.save(device);
             
             Map<String, Object> dataMap = new HashMap<>();
             dataMap.put("deviceId", device.getId());
@@ -183,8 +194,27 @@ public class SimulatorService {
         try {
             RealtimeMessage msg = new RealtimeMessage("alarm", alarm);
             webSocketHandler.broadcast(objectMapper.writeValueAsString(msg));
+            RealtimeMessage update = new RealtimeMessage("alarm_update", alarm);
+            webSocketHandler.broadcast(objectMapper.writeValueAsString(update));
         } catch (Exception e) {
             log.error("告警广播失败", e);
+        }
+    }
+
+    private void broadcastDashboardUpdate() {
+        try {
+            var stats = dashboardService.getStats();
+            Map<String, Object> data = new HashMap<>();
+            Map<String, Object> temperature = new HashMap<>();
+            temperature.put("average", stats.getAvgTemperature());
+            Map<String, Object> alarms = new HashMap<>();
+            alarms.put("active", stats.getActiveAlarms());
+            data.put("temperature", temperature);
+            data.put("alarms", alarms);
+            RealtimeMessage msg = new RealtimeMessage("dashboard_update", data);
+            webSocketHandler.broadcast(objectMapper.writeValueAsString(msg));
+        } catch (Exception e) {
+            log.error("仪表盘数据广播失败", e);
         }
     }
 }

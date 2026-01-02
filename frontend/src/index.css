@@ -3,18 +3,37 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
+  --bg-base: #0b0c10;
+  --bg-panel: rgba(18, 20, 26, 0.55);
+  --bg-glass: rgba(26, 28, 36, 0.42);
+  --bg-glow: rgba(255, 255, 255, 0.04);
+  --text-primary: #e7e9ee;
+  --text-secondary: #b7bcc7;
+  --text-muted: #8b92a1;
+  --accent-green: #42e07b;
+  --accent-yellow: #ffc857;
+  --accent-red: #ff6b6b;
+  --accent-blue: #5bc0ff;
+  --accent-purple: #9b8cff;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #141414;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(91, 192, 255, 0.18), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(155, 140, 255, 0.18), transparent 55%),
+    radial-gradient(800px 500px at 50% 100%, rgba(66, 224, 123, 0.12), transparent 60%),
+    var(--bg-base);
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
 }
+
 
 #root {
   min-height: 100vh;
@@ -27,16 +46,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1f1f1f;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #444;
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 /* 卡片悬浮效果 */
@@ -46,7 +65,7 @@ body {
 
 .hover-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 /* 状态指示灯动画 */
@@ -75,4 +94,53 @@ body {
 
 .fade-in {
   animation: fadeIn 0.3s ease;
+}
+
+.glass-shell {
+  background: var(--bg-panel);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.glass-card {
+  background: var(--bg-glass);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.glass-card:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38);
+}
+
+
+.glass-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.accent-green {
+  color: var(--accent-green);
+}
+
+.accent-yellow {
+  color: var(--accent-yellow);
+}
+
+.accent-red {
+  color: var(--accent-red);
+}
+
+.accent-blue {
+  color: var(--accent-blue);
 }

@@ -49,11 +49,15 @@ public class DeviceService {
         });
     }
     
-    public List<DeviceData> getDeviceData(Long deviceId) {
+    public List<DeviceData> getDeviceData(Long deviceId, Integer hours) {
+        if (hours != null) {
+            return deviceDataRepository.findByDeviceIdAndRecordedAtAfterOrderByRecordedAtDesc(
+                    deviceId, java.time.LocalDateTime.now().minusHours(hours));
+        }
         return deviceDataRepository.findTop10ByDeviceIdOrderByRecordedAtDesc(deviceId);
     }
     
     public List<DeviceData> getLatestDeviceData() {
-        return deviceDataRepository.findLatestForAllDevices();
+        return deviceDataRepository.findLatestForAllDevicesFast();
     }
 }

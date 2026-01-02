@@ -98,12 +98,12 @@ public class PitController {
     public ApiResponse<List<PitSensorData>> getPitSensors(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "24") Integer hours) {
-        return ApiResponse.success(pitService.getPitSensorData(id));
+        return ApiResponse.success(pitService.getPitSensorData(id, hours));
     }
     
     @GetMapping("/{id}/sensors/latest")
     public ApiResponse<PitSensorData> getLatestPitSensor(@PathVariable Long id) {
-        List<PitSensorData> data = pitService.getPitSensorData(id);
+        List<PitSensorData> data = pitService.getPitSensorData(id, null);
         if (data.isEmpty()) {
             return ApiResponse.error("暂无传感器数据");
         }
@@ -112,7 +112,7 @@ public class PitController {
     
     @GetMapping("/{id}/sensor-data")
     public ApiResponse<List<PitSensorData>> getPitSensorData(@PathVariable Long id) {
-        return ApiResponse.success(pitService.getPitSensorData(id));
+        return ApiResponse.success(pitService.getPitSensorData(id, null));
     }
     
     @GetMapping("/sensor-data/latest")

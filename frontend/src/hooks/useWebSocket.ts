@@ -5,12 +5,19 @@ type MessageHandler = (data: any) => void
 
 export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler) {
   const wsRef = useRef<WebSocket | null>(null)
+  const onMessageRef = useRef<MessageHandler | undefined>(onMessage)
   const { setWsConnected, setActiveAlarms } = useStore()
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  }, [onMessage])
 
   const connect = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/ws/${channel}`
+    const host = window.location.port === '3000'
+      ? `${window.location.hostname}:8000`
+      : window.location.host
+    const wsUrl = `${protocol}//${host}/ws/realtime`
 
     const ws = new WebSocket(wsUrl)
 
@@ -29,14 +36,14 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
         }
         
         // 调用自定义处理器
-        onMessage?.(data)
+        onMessageRef.current?.(data)
       } catch (error) {
         console.error('WebSocket message parse error:', error)
       }
     }
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected')
+      console.log('WebSocket disconnected', ws.readyState)
       setWsConnected(false)
       // 自动重连
       setTimeout(() => {
@@ -47,11 +54,11 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error)
+      console.error('WebSocket error:', error, ws.readyState)
     }
 
     wsRef.current = ws
-  }, [channel, onMessage, setWsConnected, setActiveAlarms])
+  }, [channel, setWsConnected, setActiveAlarms])
 
   useEffect(() => {
     connect()

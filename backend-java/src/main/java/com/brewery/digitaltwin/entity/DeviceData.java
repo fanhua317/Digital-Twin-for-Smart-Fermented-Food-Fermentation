@@ -9,14 +9,19 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "device_data")
+@Table(
+    name = "device_data",
+    indexes = {
+        @Index(name = "idx_device_data_device_time", columnList = "device_id, recorded_at")
+    }
+)
 public class DeviceData {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "device_id", nullable = false)
     private Long deviceId;
     
     private Double power;       // 功率 kW
@@ -29,5 +34,6 @@ public class DeviceData {
     
     private Double current;     // 电流 A
     
+    @Column(name = "recorded_at")
     private LocalDateTime recordedAt = LocalDateTime.now();
 }

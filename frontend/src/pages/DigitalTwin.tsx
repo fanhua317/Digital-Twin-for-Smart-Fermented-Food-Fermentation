@@ -27,14 +27,14 @@ export default function DigitalTwin() {
       min: 0,
       max: 100,
       axisLabel: { show: false },
-      splitLine: { lineStyle: { color: '#303030' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 100,
       axisLabel: { show: false },
-      splitLine: { lineStyle: { color: '#303030' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     series: [
       // 窖池区域
@@ -49,16 +49,16 @@ export default function DigitalTwin() {
         itemStyle: { 
           color: (params: any) => {
             const status = Math.random()
-            if (status > 0.7) return '#52c41a'
-            if (status > 0.3) return '#1890ff'
-            return '#faad14'
+            if (status > 0.7) return '#42e07b'
+            if (status > 0.3) return '#5bc0ff'
+            return '#ffc857'
           }
         },
         label: {
           show: showLabels,
           formatter: (params: any) => `J${params.dataIndex + 1}`,
           fontSize: 8,
-          color: '#888',
+          color: '#8b92a1',
         }
       },
       // 设备位置
@@ -71,7 +71,7 @@ export default function DigitalTwin() {
           [70, 80], [20, 85], [40, 85], [60, 85],
         ],
         rippleEffect: { brushType: 'stroke' },
-        itemStyle: { color: '#ff7875' },
+        itemStyle: { color: '#ff8c6b' },
       },
       // AGV路径
       {
@@ -79,7 +79,7 @@ export default function DigitalTwin() {
         name: 'AGV路径',
         coordinateSystem: 'cartesian2d',
         polyline: true,
-        lineStyle: { color: '#1890ff', width: 2, type: 'dashed' },
+        lineStyle: { color: '#5bc0ff', width: 2, type: 'dashed' },
         effect: {
           show: isPlaying,
           period: 4,
@@ -97,13 +97,13 @@ export default function DigitalTwin() {
 
   // 流程状态监控
   const processSteps = [
-    { name: '起窖转运', status: 'active', progress: 75, color: '#52c41a' },
-    { name: '配料拌粮', status: 'active', progress: 60, color: '#1890ff' },
-    { name: '润粮', status: 'active', progress: 45, color: '#1890ff' },
-    { name: '上甑给料', status: 'waiting', progress: 0, color: '#888' },
-    { name: '馏酒冲酸', status: 'waiting', progress: 0, color: '#888' },
-    { name: '摊凉加曲', status: 'waiting', progress: 0, color: '#888' },
-    { name: '入池发酵', status: 'waiting', progress: 0, color: '#888' },
+    { name: '起窖转运', status: 'active', progress: 75, color: '#42e07b' },
+    { name: '配料拌粮', status: 'active', progress: 60, color: '#5bc0ff' },
+    { name: '润粮', status: 'active', progress: 45, color: '#5bc0ff' },
+    { name: '上甑给料', status: 'waiting', progress: 0, color: '#8b92a1' },
+    { name: '馏酒冲酸', status: 'waiting', progress: 0, color: '#8b92a1' },
+    { name: '摊凉加曲', status: 'waiting', progress: 0, color: '#8b92a1' },
+    { name: '入池发酵', status: 'waiting', progress: 0, color: '#8b92a1' },
   ]
 
   // 实时性能指标
@@ -117,18 +117,18 @@ export default function DigitalTwin() {
         { name: '质量合格', max: 100 },
         { name: '生产进度', max: 100 },
       ],
-      axisName: { color: '#888' },
-      splitArea: { areaStyle: { color: ['#1f1f1f', '#262626'] } },
-      axisLine: { lineStyle: { color: '#303030' } },
-      splitLine: { lineStyle: { color: '#303030' } },
+      axisName: { color: '#8b92a1' },
+      splitArea: { areaStyle: { color: ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.06)'] } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     series: [{
       type: 'radar',
       data: [{
         value: [85, 78, 72, 92, 68],
         name: '当前状态',
-        areaStyle: { color: 'rgba(24, 144, 255, 0.3)' },
-        lineStyle: { color: '#1890ff' },
+        areaStyle: { color: 'rgba(91, 192, 255, 0.25)' },
+        lineStyle: { color: '#5bc0ff' },
       }]
     }]
   }
@@ -142,8 +142,8 @@ export default function DigitalTwin() {
           <Col xs={24} lg={16}>
             <Card 
               title="数字孪生模型"
-              style={{ background: '#1f1f1f' }}
-              headStyle={{ borderBottom: '1px solid #303030' }}
+              className="glass-card"
+              styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
               extra={
                 <Space>
                   <Button 
@@ -171,7 +171,7 @@ export default function DigitalTwin() {
                   position: 'absolute', 
                   bottom: 16, 
                   left: 16, 
-                  background: 'rgba(0,0,0,0.7)',
+                  background: 'rgba(26, 28, 36, 0.6)',
                   padding: '8px 16px',
                   borderRadius: 8,
                 }}>
@@ -184,7 +184,7 @@ export default function DigitalTwin() {
                     >
                       {isPlaying ? '暂停' : '播放'}
                     </Button>
-                    <Text style={{ color: '#888' }}>标签</Text>
+                    <Text style={{ color: '#b7bcc7' }}>标签</Text>
                     <Switch 
                       size="small" 
                       checked={showLabels}
@@ -198,15 +198,15 @@ export default function DigitalTwin() {
                   position: 'absolute', 
                   top: 16, 
                   right: 16, 
-                  background: 'rgba(0,0,0,0.7)',
+                  background: 'rgba(26, 28, 36, 0.6)',
                   padding: 12,
                   borderRadius: 8,
                 }}>
                   <Space direction="vertical" size={4}>
-                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#52c41a' }} /><Text style={{ fontSize: 12 }}>发酵中</Text></Space>
-                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#1890ff' }} /><Text style={{ fontSize: 12 }}>空闲</Text></Space>
-                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#faad14' }} /><Text style={{ fontSize: 12 }}>维护</Text></Space>
-                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff7875' }} /><Text style={{ fontSize: 12 }}>设备</Text></Space>
+                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#42e07b' }} /><Text style={{ fontSize: 12 }}>发酵中</Text></Space>
+                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#5bc0ff' }} /><Text style={{ fontSize: 12 }}>空闲</Text></Space>
+                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffc857' }} /><Text style={{ fontSize: 12 }}>维护</Text></Space>
+                    <Space><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff8c6b' }} /><Text style={{ fontSize: 12 }}>设备</Text></Space>
                   </Space>
                 </div>
               </div>
@@ -216,16 +216,17 @@ export default function DigitalTwin() {
           <Col xs={24} lg={8}>
             <Card 
               title="性能分析"
-              style={{ background: '#1f1f1f', marginBottom: 16 }}
-              headStyle={{ borderBottom: '1px solid #303030' }}
+              className="glass-card"
+              styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+              style={{ marginBottom: 16 }}
             >
               <ReactECharts option={performanceOption} style={{ height: 200 }} />
             </Card>
 
             <Card 
               title="生产流程状态"
-              style={{ background: '#1f1f1f' }}
-              headStyle={{ borderBottom: '1px solid #303030' }}
+              className="glass-card"
+              styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
             >
               {processSteps.map((step, index) => (
                 <div 
@@ -234,7 +235,7 @@ export default function DigitalTwin() {
                     display: 'flex', 
                     alignItems: 'center',
                     padding: '8px 0',
-                    borderBottom: index < processSteps.length - 1 ? '1px solid #303030' : 'none',
+                    borderBottom: index < processSteps.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                   }}
                 >
                   <div style={{ 
@@ -261,9 +262,9 @@ export default function DigitalTwin() {
       key: 'simulation',
       label: '仿真模拟',
       children: (
-        <Card style={{ background: '#1f1f1f' }}>
+        <Card className="glass-card">
           <div style={{ textAlign: 'center', padding: 60 }}>
-            <AppstoreOutlined style={{ fontSize: 64, color: '#1890ff' }} />
+            <AppstoreOutlined style={{ fontSize: 64, color: '#5bc0ff' }} />
             <Title level={4} style={{ marginTop: 24 }}>仿真模拟功能</Title>
             <Paragraph type="secondary">
               基于Unity和3D建模的高精度数字孪生仿真模块正在开发中...
@@ -280,9 +281,9 @@ export default function DigitalTwin() {
       key: 'analysis',
       label: '性能分析',
       children: (
-        <Card style={{ background: '#1f1f1f' }}>
+        <Card className="glass-card">
           <div style={{ textAlign: 'center', padding: 60 }}>
-            <SettingOutlined style={{ fontSize: 64, color: '#52c41a' }} />
+            <SettingOutlined style={{ fontSize: 64, color: '#42e07b' }} />
             <Title level={4} style={{ marginTop: 24 }}>智能分析功能</Title>
             <Paragraph type="secondary">
               基于机器学习的生产预测与优化分析模块正在开发中...

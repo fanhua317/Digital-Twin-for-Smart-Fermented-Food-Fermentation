@@ -9,14 +9,19 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "pit_sensor_data")
+@Table(
+    name = "pit_sensor_data",
+    indexes = {
+        @Index(name = "idx_pit_sensor_pit_time", columnList = "pit_id, recorded_at")
+    }
+)
 public class PitSensorData {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "pit_id", nullable = false)
     private Long pitId;
     
     private Double temperature;  // 温度 ℃
@@ -31,5 +36,6 @@ public class PitSensorData {
     
     private Double alcohol;      // 酒精度
     
+    @Column(name = "recorded_at")
     private LocalDateTime recordedAt = LocalDateTime.now();
 }

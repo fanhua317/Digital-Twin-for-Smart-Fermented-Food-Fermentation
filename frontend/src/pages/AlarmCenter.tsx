@@ -18,14 +18,12 @@ const { Option } = Select
 
 interface Alarm {
   id: number
-  source_type: string
-  source_id: number
-  source_code: string
-  alarm_level: string
-  alarm_type: string
-  alarm_message: string
-  is_resolved: boolean
-  created_at: string
+  level: string
+  type: string
+  source: string
+  message: string
+  status: string
+  createdAt: string
 }
 
 export default function AlarmCenter() {
@@ -99,15 +97,16 @@ export default function AlarmCenter() {
     return <Tag color={color}>{text}</Tag>
   }
 
-  const getSourceTypeText = (type: string) => {
-    return type === 'pit' ? '窖池' : type === 'device' ? '设备' : type
+  const parseSourceType = (source: string) => {
+    const prefix = source?.split('-')[0]
+    return prefix === 'pit' ? '窖池' : prefix === 'device' ? '设备' : prefix
   }
 
   const columns = [
     {
       title: '级别',
-      dataIndex: 'alarm_level',
-      key: 'alarm_level',
+      dataIndex: 'level',
+      key: 'level',
       width: 80,
       render: (level: string) => getLevelTag(level),
     },
@@ -117,38 +116,38 @@ export default function AlarmCenter() {
       width: 150,
       render: (_: any, record: Alarm) => (
         <Space>
-          <Tag>{getSourceTypeText(record.source_type)}</Tag>
-          <Text>{record.source_code}</Text>
+          <Tag>{parseSourceType(record.source)}</Tag>
+          <Text>{record.source}</Text>
         </Space>
       ),
     },
     {
       title: '告警类型',
-      dataIndex: 'alarm_type',
-      key: 'alarm_type',
+      dataIndex: 'type',
+      key: 'type',
       width: 120,
     },
     {
       title: '告警信息',
-      dataIndex: 'alarm_message',
-      key: 'alarm_message',
+      dataIndex: 'message',
+      key: 'message',
       ellipsis: true,
     },
     {
       title: '状态',
-      dataIndex: 'is_resolved',
-      key: 'is_resolved',
+      dataIndex: 'status',
+      key: 'status',
       width: 80,
-      render: (resolved: boolean) => (
-        resolved 
+      render: (status: string) => (
+        status === 'resolved'
           ? <Badge status="success" text="已解决" />
           : <Badge status="processing" text="活跃" />
       ),
     },
     {
       title: '时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       width: 180,
       render: (time: string) => new Date(time).toLocaleString(),
     },
@@ -157,7 +156,7 @@ export default function AlarmCenter() {
       key: 'action',
       width: 100,
       render: (_: any, record: Alarm) => (
-        !record.is_resolved && (
+        record.status !== 'resolved' && (
           <Popconfirm
             title="确认解决此告警？"
             onConfirm={() => handleResolve(record.id)}
@@ -176,16 +175,16 @@ export default function AlarmCenter() {
     tooltip: { trigger: 'item' },
     legend: { 
       bottom: 0,
-      textStyle: { color: '#888' }
+      textStyle: { color: '#b7bcc7' }
     },
     series: [{
       type: 'pie',
       radius: '65%',
       data: [
-        { value: stats?.by_level?.critical || 0, name: '严重', itemStyle: { color: '#ff4d4f' } },
-        { value: stats?.by_level?.error || 0, name: '错误', itemStyle: { color: '#fa8c16' } },
-        { value: stats?.by_level?.warning || 0, name: '警告', itemStyle: { color: '#fadb14' } },
-        { value: stats?.by_level?.info || 0, name: '信息', itemStyle: { color: '#1890ff' } },
+        { value: stats?.by_level?.critical || 0, name: '严重', itemStyle: { color: '#ff6b6b' } },
+        { value: stats?.by_level?.error || 0, name: '错误', itemStyle: { color: '#ff8c6b' } },
+        { value: stats?.by_level?.warning || 0, name: '警告', itemStyle: { color: '#ffc857' } },
+        { value: stats?.by_level?.info || 0, name: '信息', itemStyle: { color: '#5bc0ff' } },
       ],
       label: { color: '#fff' },
     }]
@@ -195,7 +194,7 @@ export default function AlarmCenter() {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys as number[]),
     getCheckboxProps: (record: Alarm) => ({
-      disabled: record.is_resolved,
+      disabled: record.status === 'resolved',
     }),
   }
 
@@ -211,35 +210,35 @@ export default function AlarmCenter() {
       {/* 统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="活跃告警"
               value={stats?.active || 0}
               prefix={<BellOutlined />}
-              valueStyle={{ color: stats?.active > 0 ? '#ff4d4f' : '#52c41a' }}
+              valueStyle={{ color: stats?.active > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="今日告警"
               value={stats?.today || 0}
-              valueStyle={{ color: '#faad14' }}
+              valueStyle={{ color: 'var(--accent-yellow)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="严重告警"
               value={stats?.by_level?.critical || 0}
-              valueStyle={{ color: '#ff4d4f' }}
+              valueStyle={{ color: 'var(--accent-red)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="历史总数"
               value={stats?.total || 0}
@@ -253,8 +252,8 @@ export default function AlarmCenter() {
         <Col xs={24} lg={8}>
           <Card 
             title="活跃告警级别分布"
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={levelChartOption} style={{ height: 280 }} />
           </Card>
@@ -264,8 +263,8 @@ export default function AlarmCenter() {
         <Col xs={24} lg={16}>
           <Card 
             title="告警列表"
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
             extra={
               <Space>
                 <Select

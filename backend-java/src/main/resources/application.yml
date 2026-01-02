@@ -6,14 +6,14 @@ spring:
     name: brewing-digital-twin
   
   datasource:
-    url: jdbc:h2:mem:brewing;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+    url: jdbc:h2:file:./data/brewing;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
     driver-class-name: org.h2.Driver
     username: sa
     password: 
   
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: false
     open-in-view: false
     properties:
@@ -35,3 +35,4 @@ app:
   simulator:
     enabled: true
     interval: 5000
+    cleanup-interval: 3600000

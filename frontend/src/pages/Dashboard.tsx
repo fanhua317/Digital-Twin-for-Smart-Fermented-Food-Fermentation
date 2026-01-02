@@ -16,25 +16,26 @@ import { useStore } from '@/store'
 const { Title, Text } = Typography
 
 interface DashboardStats {
-  total_pits: number
-  fermenting_pits: number
-  idle_pits: number
-  total_devices: number
-  running_devices: number
-  warning_devices: number
-  error_devices: number
-  active_alarms: number
-  today_production: number
-  avg_temperature: number
-  avg_humidity: number
+  totalPits: number
+  normalPits: number
+  warningPits: number
+  alarmPits: number
+  totalDevices: number
+  runningDevices: number
+  faultDevices: number
+  activeAlarms: number
+  inProgressBatches: number
+  totalProduction: number
+  avgTemperature: number
+  avgHumidity: number
 }
 
 interface AlarmItem {
   id: number
-  source_code: string
-  alarm_level: string
-  alarm_message: string
-  created_at: string
+  source: string
+  level: string
+  message: string
+  createdAt: string
 }
 
 export default function Dashboard() {
@@ -50,8 +51,8 @@ export default function Dashboard() {
       // 更新部分数据
       setStats(prev => prev ? {
         ...prev,
-        avg_temperature: data.data.temperature?.average || prev.avg_temperature,
-        active_alarms: data.data.alarms?.active || prev.active_alarms,
+        avgTemperature: data.data.temperature?.average || prev.avgTemperature,
+        activeAlarms: data.data.alarms?.active || prev.activeAlarms,
       } : prev)
     }
   })
@@ -64,16 +65,24 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [statsData, overviewData, alarmsData] = await Promise.all([
+      const [statsResult, overviewResult, alarmsResult] = await Promise.allSettled([
         dashboardApi.getStats(),
         dashboardApi.getOverview(),
         alarmsApi.getActive(),
       ])
-      setStats(statsData as unknown as DashboardStats)
-      setDashboardStats(statsData as unknown as DashboardStats)
-      setOverview(overviewData)
-      setAlarms((alarmsData as unknown as AlarmItem[]).slice(0, 5))
-      setActiveAlarms((alarmsData as unknown as AlarmItem[]).length)
+      if (statsResult.status === 'fulfilled') {
+        const statsData = statsResult.value as DashboardStats
+        setStats(statsData)
+        setDashboardStats(statsData)
+      }
+      if (overviewResult.status === 'fulfilled') {
+        setOverview(overviewResult.value)
+      }
+      if (alarmsResult.status === 'fulfilled') {
+        const alarmsData = alarmsResult.value as AlarmItem[]
+        setAlarms(alarmsData.slice(0, 5))
+        setActiveAlarms(alarmsData.length)
+      }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -84,33 +93,32 @@ export default function Dashboard() {
   // 窖池状态饼图配置
   const pitChartOption = {
     tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { color: '#fff' } },
+    legend: { bottom: 0, textStyle: { color: '#b7bcc7' } },
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
       data: [
-        { value: stats?.fermenting_pits || 0, name: '发酵中', itemStyle: { color: '#52c41a' } },
-        { value: stats?.idle_pits || 0, name: '空闲', itemStyle: { color: '#1890ff' } },
-        { value: (stats?.total_pits || 0) - (stats?.fermenting_pits || 0) - (stats?.idle_pits || 0), name: '其他', itemStyle: { color: '#faad14' } },
+        { value: stats?.normalPits || 0, name: '正常', itemStyle: { color: '#42e07b' } },
+        { value: stats?.warningPits || 0, name: '警告', itemStyle: { color: '#ffc857' } },
+        { value: stats?.alarmPits || 0, name: '告警', itemStyle: { color: '#ff6b6b' } },
       ],
-      label: { color: '#fff' },
+      label: { color: '#e7e9ee' },
     }]
   }
 
   // 设备状态饼图配置
   const deviceChartOption = {
     tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { color: '#fff' } },
+    legend: { bottom: 0, textStyle: { color: '#b7bcc7' } },
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
       data: [
-        { value: stats?.running_devices || 0, name: '运行中', itemStyle: { color: '#52c41a' } },
-        { value: stats?.warning_devices || 0, name: '警告', itemStyle: { color: '#faad14' } },
-        { value: stats?.error_devices || 0, name: '故障', itemStyle: { color: '#ff4d4f' } },
-        { value: (stats?.total_devices || 0) - (stats?.running_devices || 0) - (stats?.warning_devices || 0) - (stats?.error_devices || 0), name: '空闲', itemStyle: { color: '#1890ff' } },
+        { value: stats?.runningDevices || 0, name: '运行中', itemStyle: { color: '#42e07b' } },
+        { value: stats?.faultDevices || 0, name: '故障', itemStyle: { color: '#ff6b6b' } },
+        { value: Math.max(0, (stats?.totalDevices || 0) - (stats?.runningDevices || 0) - (stats?.faultDevices || 0)), name: '其他', itemStyle: { color: '#5bc0ff' } },
       ],
-      label: { color: '#fff' },
+      label: { color: '#e7e9ee' },
     }]
   }
 
@@ -121,19 +129,19 @@ export default function Dashboard() {
     xAxis: {
       type: 'category',
       data: overview?.alarm_trend?.map((t: any) => t.hour) || [],
-      axisLabel: { color: '#888' },
+      axisLabel: { color: '#8b92a1' },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#888' },
-      splitLine: { lineStyle: { color: '#303030' } },
+      axisLabel: { color: '#8b92a1' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     series: [{
       data: overview?.alarm_trend?.map((t: any) => t.count) || [],
       type: 'line',
       smooth: true,
-      areaStyle: { color: 'rgba(24, 144, 255, 0.3)' },
-      lineStyle: { color: '#1890ff' },
+      areaStyle: { color: 'rgba(91, 192, 255, 0.25)' },
+      lineStyle: { color: '#5bc0ff' },
     }]
   }
 
@@ -160,78 +168,78 @@ export default function Dashboard() {
       {/* 核心指标卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="hover-card" style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card hover-card">
             <Statistic
-              title={<Text type="secondary">窖池总数</Text>}
-              value={stats?.total_pits || 0}
-              prefix={<ExperimentOutlined style={{ color: '#1890ff' }} />}
+              title={<Text className="text-secondary">窖池总数</Text>}
+              value={stats?.totalPits || 0}
+              prefix={<ExperimentOutlined style={{ color: 'var(--accent-blue)' }} />}
               suffix={
-                <Text type="secondary" style={{ fontSize: 14 }}>
-                  / 发酵中 {stats?.fermenting_pits || 0}
+                <Text className="text-secondary" style={{ fontSize: 14 }}>
+                  / 正常 {stats?.normalPits || 0}
                 </Text>
               }
             />
             <Progress 
-              percent={stats ? (stats.fermenting_pits / stats.total_pits * 100) : 0} 
+              percent={stats ? (stats.normalPits / stats.totalPits * 100) : 0} 
               showInfo={false}
-              strokeColor="#52c41a"
-              trailColor="#303030"
+              strokeColor="var(--accent-green)"
+              trailColor="rgba(255,255,255,0.06)"
               style={{ marginTop: 8 }}
             />
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card className="hover-card" style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card hover-card">
             <Statistic
-              title={<Text type="secondary">设备总数</Text>}
-              value={stats?.total_devices || 0}
-              prefix={<SettingOutlined style={{ color: '#52c41a' }} />}
+              title={<Text className="text-secondary">设备总数</Text>}
+              value={stats?.totalDevices || 0}
+              prefix={<SettingOutlined style={{ color: 'var(--accent-green)' }} />}
               suffix={
-                <Text type="secondary" style={{ fontSize: 14 }}>
-                  / 运行 {stats?.running_devices || 0}
+                <Text className="text-secondary" style={{ fontSize: 14 }}>
+                  / 运行 {stats?.runningDevices || 0}
                 </Text>
               }
             />
             <Progress 
-              percent={stats ? (stats.running_devices / stats.total_devices * 100) : 0} 
+              percent={stats ? (stats.runningDevices / stats.totalDevices * 100) : 0} 
               showInfo={false}
-              strokeColor="#52c41a"
-              trailColor="#303030"
+              strokeColor="var(--accent-green)"
+              trailColor="rgba(255,255,255,0.06)"
               style={{ marginTop: 8 }}
             />
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card className="hover-card" style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card hover-card">
             <Statistic
-              title={<Text type="secondary">活跃告警</Text>}
-              value={stats?.active_alarms || 0}
-              prefix={<AlertOutlined style={{ color: stats?.active_alarms ? '#ff4d4f' : '#52c41a' }} />}
-              valueStyle={{ color: stats?.active_alarms ? '#ff4d4f' : '#52c41a' }}
+              title={<Text className="text-secondary">活跃告警</Text>}
+              value={stats?.activeAlarms || 0}
+              prefix={<AlertOutlined style={{ color: stats?.activeAlarms ? 'var(--accent-red)' : 'var(--accent-green)' }} />}
+              valueStyle={{ color: stats?.activeAlarms ? 'var(--accent-red)' : 'var(--accent-green)' }}
             />
             <div style={{ marginTop: 8 }}>
               <Space>
-                <Badge status="error" text={<Text type="secondary">严重 {overview?.alarm_trend?.[0]?.count || 0}</Text>} />
-                <Badge status="warning" text={<Text type="secondary">警告 {stats?.warning_devices || 0}</Text>} />
+                <Badge status="error" text={<Text className="text-secondary">严重 {overview?.alarm_trend?.[0]?.count || 0}</Text>} />
+                <Badge status="warning" text={<Text className="text-secondary">警告 {stats?.warningPits || 0}</Text>} />
               </Space>
             </div>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card className="hover-card" style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card hover-card">
             <Statistic
-              title={<Text type="secondary">今日产量</Text>}
-              value={stats?.today_production || 0}
+              title={<Text className="text-secondary">累计产量</Text>}
+              value={stats?.totalProduction || 0}
               precision={0}
-              prefix={<RiseOutlined style={{ color: '#faad14' }} />}
+              prefix={<RiseOutlined style={{ color: 'var(--accent-yellow)' }} />}
               suffix="kg"
             />
             <div style={{ marginTop: 8 }}>
-              <Text type="secondary">
-                <FieldTimeOutlined /> 平均温度: {stats?.avg_temperature || 0}℃
+              <Text className="text-secondary">
+                <FieldTimeOutlined /> 平均温度: {stats?.avgTemperature || 0}℃
               </Text>
             </div>
           </Card>
@@ -243,8 +251,8 @@ export default function Dashboard() {
         <Col xs={24} lg={8}>
           <Card 
             title="窖池状态分布" 
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={pitChartOption} style={{ height: 260 }} />
           </Card>
@@ -253,8 +261,8 @@ export default function Dashboard() {
         <Col xs={24} lg={8}>
           <Card 
             title="设备状态分布" 
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={deviceChartOption} style={{ height: 260 }} />
           </Card>
@@ -263,8 +271,8 @@ export default function Dashboard() {
         <Col xs={24} lg={8}>
           <Card 
             title="24小时告警趋势" 
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={alarmTrendOption} style={{ height: 260 }} />
           </Card>
@@ -276,13 +284,13 @@ export default function Dashboard() {
         <Col xs={24} lg={12}>
           <Card 
             title="最新告警" 
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
             extra={<a href="/alarms">查看全部</a>}
           >
             {alarms.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
-                <Text type="secondary">暂无活跃告警</Text>
+                <Text className="text-secondary">暂无活跃告警</Text>
               </div>
             ) : (
               alarms.map((alarm) => (
@@ -290,20 +298,20 @@ export default function Dashboard() {
                   key={alarm.id} 
                   style={{ 
                     padding: '12px 0', 
-                    borderBottom: '1px solid #303030',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                   }}
                 >
                   <div>
-                    <Tag color={getAlarmColor(alarm.alarm_level)}>
-                      {alarm.source_code}
+                    <Tag color={getAlarmColor(alarm.level)}>
+                      {alarm.source}
                     </Tag>
-                    <Text style={{ marginLeft: 8 }}>{alarm.alarm_message}</Text>
+                    <Text style={{ marginLeft: 8 }}>{alarm.message}</Text>
                   </div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(alarm.created_at).toLocaleTimeString()}
+                  <Text className="text-secondary" style={{ fontSize: 12 }}>
+                    {new Date(alarm.createdAt).toLocaleTimeString()}
                   </Text>
                 </div>
               ))
@@ -314,29 +322,29 @@ export default function Dashboard() {
         <Col xs={24} lg={12}>
           <Card 
             title="生产进度" 
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             {overview?.production_progress?.length ? (
               overview.production_progress.map((batch: any) => (
                 <div key={batch.batch_code} style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <Text>{batch.batch_code}</Text>
-                    <Text type="secondary">{batch.grain_type}</Text>
+                    <Text className="text-secondary">{batch.grain_type}</Text>
                   </div>
                   <Progress 
                     percent={batch.progress} 
                     strokeColor={{
-                      '0%': '#1890ff',
-                      '100%': '#52c41a',
+                      '0%': '#5bc0ff',
+                      '100%': '#42e07b',
                     }}
-                    trailColor="#303030"
+                    trailColor="rgba(255,255,255,0.06)"
                   />
                 </div>
               ))
             ) : (
               <div style={{ textAlign: 'center', padding: 40 }}>
-                <Text type="secondary">暂无进行中的生产批次</Text>
+                <Text className="text-secondary">暂无进行中的生产批次</Text>
               </div>
             )}
           </Card>

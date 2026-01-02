@@ -18,14 +18,13 @@ const { Option } = Select
 
 interface Device {
   id: number
-  device_code: string
-  device_name: string
-  device_type: string
+  deviceNo: string
+  name: string
+  type: string
   status: string
-  running_hours: number
-  last_maintenance: string | null
-  location_x: number
-  location_y: number
+  runningHours: number
+  lastMaintenance: string | null
+  location: string | null
 }
 
 interface DeviceData {
@@ -34,8 +33,7 @@ interface DeviceData {
   vibration: number
   temperature: number
   current: number
-  voltage: number
-  recorded_at: string
+  recordedAt: string
 }
 
 export default function DeviceMonitor() {
@@ -59,7 +57,7 @@ export default function DeviceMonitor() {
     setLoading(true)
     try {
       const [devicesData, statsData, types] = await Promise.all([
-        devicesApi.list({ device_type: typeFilter, status: statusFilter }),
+        devicesApi.list({ type: typeFilter, status: statusFilter }),
         devicesApi.getStats(),
         devicesApi.getTypes(),
       ])
@@ -91,9 +89,9 @@ export default function DeviceMonitor() {
   const getStatusTag = (status: string) => {
     const config: Record<string, { color: string; text: string }> = {
       running: { color: 'green', text: '运行中' },
-      idle: { color: 'blue', text: '空闲' },
+      stopped: { color: 'blue', text: '停机' },
       warning: { color: 'orange', text: '警告' },
-      error: { color: 'red', text: '故障' },
+      fault: { color: 'red', text: '故障' },
       maintenance: { color: 'purple', text: '维护中' },
     }
     const { color, text } = config[status] || { color: 'default', text: status }
@@ -102,14 +100,11 @@ export default function DeviceMonitor() {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      AGV: '智能运输车',
-      Robot: '机器人',
-      Conveyor: '输送带',
-      Mixer: '拌料机',
-      Steamer: '蒸汽发生器',
-      Cooler: '摊凉机',
-      Pump: '输送泵',
-      Sensor: '传感器节点',
+      pump: '输送泵',
+      motor: '电机',
+      sensor: '传感器',
+      robot: '机器人',
+      conveyor: '输送带',
     }
     return labels[type] || type
   }
@@ -117,18 +112,18 @@ export default function DeviceMonitor() {
   const columns = [
     {
       title: '设备编号',
-      dataIndex: 'device_code',
-      key: 'device_code',
+      dataIndex: 'deviceNo',
+      key: 'deviceNo',
     },
     {
       title: '设备名称',
-      dataIndex: 'device_name',
-      key: 'device_name',
+      dataIndex: 'name',
+      key: 'name',
     },
     {
       title: '类型',
-      dataIndex: 'device_type',
-      key: 'device_type',
+      dataIndex: 'type',
+      key: 'type',
       render: (type: string) => <Tag>{getTypeLabel(type)}</Tag>,
     },
     {
@@ -139,14 +134,14 @@ export default function DeviceMonitor() {
     },
     {
       title: '运行时长',
-      dataIndex: 'running_hours',
-      key: 'running_hours',
+      dataIndex: 'runningHours',
+      key: 'runningHours',
       render: (hours: number) => `${hours.toFixed(0)} 小时`,
     },
     {
       title: '上次维护',
-      dataIndex: 'last_maintenance',
-      key: 'last_maintenance',
+      dataIndex: 'lastMaintenance',
+      key: 'lastMaintenance',
       render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
     },
     {
@@ -164,6 +159,11 @@ export default function DeviceMonitor() {
     },
   ]
 
+  const deviceTypeCounts = devices.reduce<Record<string, number>>((acc, device) => {
+    acc[device.type] = (acc[device.type] || 0) + 1
+    return acc
+  }, {})
+
   // 设备类型分布图
   const typeChartOption = {
     tooltip: { trigger: 'item' },
@@ -171,13 +171,13 @@ export default function DeviceMonitor() {
       orient: 'vertical', 
       right: 10, 
       top: 'center',
-      textStyle: { color: '#888' }
+      textStyle: { color: '#b7bcc7' }
     },
     series: [{
       type: 'pie',
       radius: ['45%', '70%'],
       center: ['35%', '50%'],
-      data: Object.entries(stats?.by_type || {}).map(([name, value]) => ({
+      data: Object.entries(deviceTypeCounts).map(([name, value]) => ({
         name: getTypeLabel(name),
         value,
       })),
@@ -193,26 +193,26 @@ export default function DeviceMonitor() {
     tooltip: { trigger: 'axis' },
     legend: { 
       data: ['功率', '振动', '温度'],
-      textStyle: { color: '#888' },
+      textStyle: { color: '#b7bcc7' },
       bottom: 0
     },
     grid: { left: 50, right: 50, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
-      data: deviceHistory.map(d => new Date(d.recorded_at).toLocaleTimeString()),
-      axisLabel: { color: '#888', rotate: 45 },
+      data: deviceHistory.map(d => new Date(d.recordedAt).toLocaleTimeString()),
+      axisLabel: { color: '#8b92a1', rotate: 45 },
     },
     yAxis: [
       {
         type: 'value',
         name: '功率(kW)',
-        axisLabel: { color: '#888' },
-        splitLine: { lineStyle: { color: '#303030' } },
+        axisLabel: { color: '#8b92a1' },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       },
       {
         type: 'value',
         name: '振动/温度',
-        axisLabel: { color: '#888' },
+        axisLabel: { color: '#8b92a1' },
         splitLine: { show: false },
       }
     ],
@@ -222,7 +222,7 @@ export default function DeviceMonitor() {
         type: 'line',
         data: deviceHistory.map(d => d.power),
         smooth: true,
-        itemStyle: { color: '#1890ff' },
+        itemStyle: { color: '#5bc0ff' },
       },
       {
         name: '振动',
@@ -230,7 +230,7 @@ export default function DeviceMonitor() {
         yAxisIndex: 1,
         data: deviceHistory.map(d => d.vibration),
         smooth: true,
-        itemStyle: { color: '#faad14' },
+        itemStyle: { color: '#ffc857' },
       },
       {
         name: '温度',
@@ -238,15 +238,15 @@ export default function DeviceMonitor() {
         yAxisIndex: 1,
         data: deviceHistory.map(d => d.temperature),
         smooth: true,
-        itemStyle: { color: '#ff7875' },
+        itemStyle: { color: '#ff8c6b' },
       }
     ]
   }
 
   const filteredDevices = devices.filter(d => 
     !searchText || 
-    d.device_code.toLowerCase().includes(searchText.toLowerCase()) ||
-    d.device_name.toLowerCase().includes(searchText.toLowerCase())
+    d.deviceNo.toLowerCase().includes(searchText.toLowerCase()) ||
+    d.name.toLowerCase().includes(searchText.toLowerCase())
   )
 
   return (
@@ -261,34 +261,34 @@ export default function DeviceMonitor() {
       {/* 统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic title="设备总数" value={stats?.total || 0} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="运行中" 
               value={stats?.running || 0} 
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: 'var(--accent-green)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
-              title="警告" 
-              value={stats?.warning || 0} 
-              valueStyle={{ color: '#faad14' }}
+              title="停机" 
+              value={stats?.stopped || 0} 
+              valueStyle={{ color: 'var(--accent-blue)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
               title="故障" 
-              value={stats?.error || 0} 
-              valueStyle={{ color: '#ff4d4f' }}
+              value={stats?.fault || 0} 
+              valueStyle={{ color: 'var(--accent-red)' }}
             />
           </Card>
         </Col>
@@ -299,8 +299,8 @@ export default function DeviceMonitor() {
         <Col xs={24} lg={12}>
           <Card 
             title="设备类型分布"
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             <ReactECharts option={typeChartOption} style={{ height: 300 }} />
           </Card>
@@ -313,28 +313,28 @@ export default function DeviceMonitor() {
                 维护提醒
               </Space>
             }
-            style={{ background: '#1f1f1f' }}
-            headStyle={{ borderBottom: '1px solid #303030' }}
+            className="glass-card"
+            styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
           >
             {devices
-              .filter(d => d.running_hours > 3000)
+              .filter(d => d.runningHours > 3000)
               .slice(0, 5)
               .map(d => (
                 <div key={d.id} style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text>{d.device_name}</Text>
-                    <Text type="secondary">{d.running_hours.toFixed(0)}h</Text>
+                    <Text>{d.name}</Text>
+                    <Text type="secondary">{d.runningHours.toFixed(0)}h</Text>
                   </div>
                   <Progress 
-                    percent={Math.min(100, d.running_hours / 50)}
-                    strokeColor={d.running_hours > 4000 ? '#ff4d4f' : '#faad14'}
-                    trailColor="#303030"
+                    percent={Math.min(100, d.runningHours / 50)}
+                    strokeColor={d.runningHours > 4000 ? 'var(--accent-red)' : 'var(--accent-yellow)'}
+                    trailColor="rgba(255,255,255,0.06)"
                     size="small"
                   />
                 </div>
               ))
             }
-            {devices.filter(d => d.running_hours > 3000).length === 0 && (
+            {devices.filter(d => d.runningHours > 3000).length === 0 && (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <Text type="secondary">暂无需要维护的设备</Text>
               </div>
@@ -346,8 +346,9 @@ export default function DeviceMonitor() {
       {/* 设备列表 */}
       <Card 
         title="设备列表"
-        style={{ background: '#1f1f1f', marginTop: 16 }}
-        headStyle={{ borderBottom: '1px solid #303030' }}
+        className="glass-card"
+        styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+        style={{ marginTop: 16 }}
         extra={
           <Space>
             <Input
@@ -376,9 +377,9 @@ export default function DeviceMonitor() {
               onChange={setStatusFilter}
             >
               <Option value="running">运行中</Option>
-              <Option value="idle">空闲</Option>
+              <Option value="stopped">停机</Option>
               <Option value="warning">警告</Option>
-              <Option value="error">故障</Option>
+              <Option value="fault">故障</Option>
               <Option value="maintenance">维护中</Option>
             </Select>
             <Button icon={<ReloadOutlined />} onClick={loadData}>
@@ -398,7 +399,7 @@ export default function DeviceMonitor() {
 
       {/* 设备详情弹窗 */}
       <Modal
-        title={`设备详情 - ${selectedDevice?.device_name}`}
+        title={`设备详情 - ${selectedDevice?.name}`}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         width={800}
@@ -407,16 +408,16 @@ export default function DeviceMonitor() {
         {selectedDevice && (
           <>
             <Descriptions bordered column={2} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="设备编号">{selectedDevice.device_code}</Descriptions.Item>
-              <Descriptions.Item label="设备名称">{selectedDevice.device_name}</Descriptions.Item>
+              <Descriptions.Item label="设备编号">{selectedDevice.deviceNo}</Descriptions.Item>
+              <Descriptions.Item label="设备名称">{selectedDevice.name}</Descriptions.Item>
               <Descriptions.Item label="设备类型">
-                <Tag>{getTypeLabel(selectedDevice.device_type)}</Tag>
+                <Tag>{getTypeLabel(selectedDevice.type)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="状态">{getStatusTag(selectedDevice.status)}</Descriptions.Item>
-              <Descriptions.Item label="运行时长">{selectedDevice.running_hours.toFixed(0)} 小时</Descriptions.Item>
+              <Descriptions.Item label="运行时长">{selectedDevice.runningHours.toFixed(0)} 小时</Descriptions.Item>
               <Descriptions.Item label="上次维护">
-                {selectedDevice.last_maintenance 
-                  ? new Date(selectedDevice.last_maintenance).toLocaleDateString() 
+                {selectedDevice.lastMaintenance 
+                  ? new Date(selectedDevice.lastMaintenance).toLocaleDateString() 
                   : '-'}
               </Descriptions.Item>
             </Descriptions>
@@ -426,32 +427,27 @@ export default function DeviceMonitor() {
                 <Title level={5}>实时运行数据</Title>
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                   <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic title="功率" value={deviceData.power} suffix="kW" precision={2} />
                     </Card>
                   </Col>
                   <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
-                      <Statistic title="电压" value={deviceData.voltage} suffix="V" precision={1} />
-                    </Card>
-                  </Col>
-                  <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic title="电流" value={deviceData.current} suffix="A" precision={2} />
                     </Card>
                   </Col>
                   <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic title="速度" value={deviceData.speed} precision={1} />
                     </Card>
                   </Col>
                   <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic title="振动" value={deviceData.vibration} suffix="mm/s" precision={2} />
                     </Card>
                   </Col>
                   <Col span={8}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic title="温度" value={deviceData.temperature} suffix="℃" precision={1} />
                     </Card>
                   </Col>

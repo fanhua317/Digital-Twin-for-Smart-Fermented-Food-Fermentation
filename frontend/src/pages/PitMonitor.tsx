@@ -19,23 +19,22 @@ const { Option } = Select
 
 interface Pit {
   id: number
-  pit_code: string
+  pitNo: string
+  zone: string
   status: string
-  current_batch: string | null
-  ferment_start_time: string | null
-  ferment_days: number
-  location_x: number
-  location_y: number
+  fermentationDay: number
+  row: number
+  col: number
 }
 
 interface SensorData {
   temperature: number
   humidity: number
-  ph_value: number
+  phValue: number
   acidity: number
   moisture: number
-  alcohol_content: number
-  recorded_at: string
+  alcohol: number
+  recordedAt: string
 }
 
 export default function PitMonitor() {
@@ -64,14 +63,20 @@ export default function PitMonitor() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [pitsData, statsData, heatmap] = await Promise.all([
+      const [pitsResult, statsResult, heatmapResult] = await Promise.allSettled([
         pitsApi.list({ status: statusFilter }),
         pitsApi.getStats(),
         pitsApi.getHeatmap(),
       ])
-      setPits(pitsData as unknown as Pit[])
-      setStats(statsData)
-      setHeatmapData(heatmap as unknown as any[])
+      if (pitsResult.status === 'fulfilled') {
+        setPits(pitsResult.value as Pit[])
+      }
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value)
+      }
+      if (heatmapResult.status === 'fulfilled') {
+        setHeatmapData(heatmapResult.value as unknown as any[])
+      }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -96,10 +101,10 @@ export default function PitMonitor() {
 
   const getStatusTag = (status: string) => {
     const config: Record<string, { color: string; text: string }> = {
-      fermenting: { color: 'green', text: '发酵中' },
-      idle: { color: 'blue', text: '空闲' },
-      transferring: { color: 'orange', text: '转运中' },
-      maintenance: { color: 'red', text: '维护中' },
+      normal: { color: 'green', text: '正常' },
+      warning: { color: 'gold', text: '警告' },
+      alarm: { color: 'red', text: '告警' },
+      maintenance: { color: 'orange', text: '维护中' },
     }
     const { color, text } = config[status] || { color: 'default', text: status }
     return <Tag color={color}>{text}</Tag>
@@ -108,11 +113,11 @@ export default function PitMonitor() {
   const columns = [
     {
       title: '窖池编号',
-      dataIndex: 'pit_code',
-      key: 'pit_code',
+      dataIndex: 'pitNo',
+      key: 'pitNo',
       filteredValue: searchText ? [searchText] : null,
       onFilter: (value: any, record: Pit) =>
-        record.pit_code.toLowerCase().includes(value.toLowerCase()),
+        record.pitNo.toLowerCase().includes(value.toLowerCase()),
     },
     {
       title: '状态',
@@ -121,23 +126,21 @@ export default function PitMonitor() {
       render: (status: string) => getStatusTag(status),
     },
     {
-      title: '当前批次',
-      dataIndex: 'current_batch',
-      key: 'current_batch',
-      render: (text: string) => text || '-',
+      title: '区域',
+      dataIndex: 'zone',
+      key: 'zone',
     },
     {
       title: '发酵天数',
-      dataIndex: 'ferment_days',
-      key: 'ferment_days',
-      render: (days: number, record: Pit) => 
-        record.status === 'fermenting' ? `${days} 天` : '-',
+      dataIndex: 'fermentationDay',
+      key: 'fermentationDay',
+      render: (days: number) => `${days} 天`,
     },
     {
       title: '位置',
       key: 'location',
       render: (_: any, record: Pit) => 
-        `(${record.location_x.toFixed(1)}, ${record.location_y.toFixed(1)})`,
+        `(${record.row}, ${record.col})`,
     },
     {
       title: '操作',
@@ -160,19 +163,19 @@ export default function PitMonitor() {
       position: 'top',
       formatter: (params: any) => {
         const data = heatmapData[params.dataIndex]
-        return `${data?.pit_code}<br/>温度: ${data?.temperature?.toFixed(1)}℃`
+        return `${data?.pitNo}<br/>温度: ${data?.temperature?.toFixed(1)}℃`
       }
     },
     grid: { left: 40, right: 20, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: Array.from({ length: 10 }, (_, i) => `列${i + 1}`),
-      axisLabel: { color: '#888' },
+      axisLabel: { color: '#8b92a1' },
     },
     yAxis: {
       type: 'category',
       data: Array.from({ length: 10 }, (_, i) => `行${i + 1}`),
-      axisLabel: { color: '#888' },
+      axisLabel: { color: '#8b92a1' },
     },
     visualMap: {
       min: 15,
@@ -182,9 +185,9 @@ export default function PitMonitor() {
       left: 'center',
       bottom: 0,
       inRange: {
-        color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#fee090', '#fdae61', '#f46d43', '#d73027']
+        color: ['#14233b', '#1f3a6b', '#2f5ea5', '#5bc0ff', '#ffe39a', '#ffc857', '#ff8c6b', '#ff6b6b']
       },
-      textStyle: { color: '#888' }
+      textStyle: { color: '#8b92a1' }
     },
     series: [{
       type: 'heatmap',
@@ -201,26 +204,26 @@ export default function PitMonitor() {
     tooltip: { trigger: 'axis' },
     legend: { 
       data: ['温度', 'pH值', '酸度'],
-      textStyle: { color: '#888' },
+      textStyle: { color: '#b7bcc7' },
       bottom: 0
     },
     grid: { left: 50, right: 20, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
-      data: sensorHistory.map(d => new Date(d.recorded_at).toLocaleTimeString()),
-      axisLabel: { color: '#888', rotate: 45 },
+      data: sensorHistory.map(d => new Date(d.recordedAt).toLocaleTimeString()),
+      axisLabel: { color: '#8b92a1', rotate: 45 },
     },
     yAxis: [
       {
         type: 'value',
         name: '温度(℃)',
-        axisLabel: { color: '#888' },
-        splitLine: { lineStyle: { color: '#303030' } },
+        axisLabel: { color: '#8b92a1' },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       },
       {
         type: 'value',
         name: 'pH/酸度',
-        axisLabel: { color: '#888' },
+        axisLabel: { color: '#8b92a1' },
         splitLine: { show: false },
       }
     ],
@@ -230,15 +233,15 @@ export default function PitMonitor() {
         type: 'line',
         data: sensorHistory.map(d => d.temperature),
         smooth: true,
-        itemStyle: { color: '#ff7875' },
+        itemStyle: { color: '#ff8c6b' },
       },
       {
         name: 'pH值',
         type: 'line',
         yAxisIndex: 1,
-        data: sensorHistory.map(d => d.ph_value),
+        data: sensorHistory.map(d => d.phValue),
         smooth: true,
-        itemStyle: { color: '#69c0ff' },
+        itemStyle: { color: '#5bc0ff' },
       },
       {
         name: '酸度',
@@ -246,13 +249,13 @@ export default function PitMonitor() {
         yAxisIndex: 1,
         data: sensorHistory.map(d => d.acidity),
         smooth: true,
-        itemStyle: { color: '#95de64' },
+        itemStyle: { color: '#42e07b' },
       }
     ]
   }
 
   const filteredPits = pits.filter(p => 
-    !searchText || p.pit_code.toLowerCase().includes(searchText.toLowerCase())
+    !searchText || p.pitNo.toLowerCase().includes(searchText.toLowerCase())
   )
 
   return (
@@ -267,34 +270,34 @@ export default function PitMonitor() {
       {/* 统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic title="窖池总数" value={stats?.total || 0} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
-              title="发酵中" 
-              value={stats?.fermenting || 0} 
-              valueStyle={{ color: '#52c41a' }}
+              title="正常" 
+              value={stats?.normal || 0} 
+              valueStyle={{ color: 'var(--accent-green)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
-              title="空闲" 
-              value={stats?.idle || 0} 
-              valueStyle={{ color: '#1890ff' }}
+              title="警告" 
+              value={stats?.warning || 0} 
+              valueStyle={{ color: 'var(--accent-yellow)' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ background: '#1f1f1f' }}>
+          <Card className="glass-card">
             <Statistic 
-              title="维护中" 
-              value={stats?.maintenance || 0} 
-              valueStyle={{ color: '#faad14' }}
+              title="告警" 
+              value={stats?.alarm || 0} 
+              valueStyle={{ color: 'var(--accent-red)' }}
             />
           </Card>
         </Col>
@@ -304,12 +307,13 @@ export default function PitMonitor() {
       <Card 
         title={
           <Space>
-            <FireOutlined style={{ color: '#ff7875' }} />
+            <FireOutlined style={{ color: 'var(--accent-red)' }} />
             温度热力图
           </Space>
         }
-        style={{ background: '#1f1f1f', marginTop: 16 }}
-        headStyle={{ borderBottom: '1px solid #303030' }}
+        className="glass-card"
+        styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+        style={{ marginTop: 16 }}
       >
         <ReactECharts option={heatmapOption} style={{ height: 350 }} />
       </Card>
@@ -317,8 +321,9 @@ export default function PitMonitor() {
       {/* 窖池列表 */}
       <Card 
         title="窖池列表"
-        style={{ background: '#1f1f1f', marginTop: 16 }}
-        headStyle={{ borderBottom: '1px solid #303030' }}
+        className="glass-card"
+        styles={{ header: { borderBottom: '1px solid rgba(255,255,255,0.06)' } }}
+        style={{ marginTop: 16 }}
         extra={
           <Space>
             <Input
@@ -335,9 +340,9 @@ export default function PitMonitor() {
               value={statusFilter}
               onChange={setStatusFilter}
             >
-              <Option value="fermenting">发酵中</Option>
-              <Option value="idle">空闲</Option>
-              <Option value="transferring">转运中</Option>
+              <Option value="normal">正常</Option>
+              <Option value="warning">警告</Option>
+              <Option value="alarm">告警</Option>
               <Option value="maintenance">维护中</Option>
             </Select>
             <Button icon={<ReloadOutlined />} onClick={loadData}>
@@ -357,7 +362,7 @@ export default function PitMonitor() {
 
       {/* 窖池详情弹窗 */}
       <Modal
-        title={`窖池详情 - ${selectedPit?.pit_code}`}
+        title={`窖池详情 - ${selectedPit?.pitNo}`}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         width={800}
@@ -366,10 +371,9 @@ export default function PitMonitor() {
         {selectedPit && (
           <>
             <Descriptions bordered column={2} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="窖池编号">{selectedPit.pit_code}</Descriptions.Item>
+              <Descriptions.Item label="窖池编号">{selectedPit.pitNo}</Descriptions.Item>
               <Descriptions.Item label="状态">{getStatusTag(selectedPit.status)}</Descriptions.Item>
-              <Descriptions.Item label="当前批次">{selectedPit.current_batch || '-'}</Descriptions.Item>
-              <Descriptions.Item label="发酵天数">{selectedPit.ferment_days} 天</Descriptions.Item>
+              <Descriptions.Item label="发酵天数">{selectedPit.fermentationDay} 天</Descriptions.Item>
             </Descriptions>
 
             {sensorData && (
@@ -377,7 +381,7 @@ export default function PitMonitor() {
                 <Title level={5}>实时传感器数据</Title>
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                   <Col span={6}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic 
                         title="温度" 
                         value={sensorData.temperature} 
@@ -387,7 +391,7 @@ export default function PitMonitor() {
                     </Card>
                   </Col>
                   <Col span={6}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic 
                         title="湿度" 
                         value={sensorData.humidity} 
@@ -397,19 +401,19 @@ export default function PitMonitor() {
                     </Card>
                   </Col>
                   <Col span={6}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic 
                         title="pH值" 
-                        value={sensorData.ph_value}
+                        value={sensorData.phValue}
                         precision={2}
                       />
                     </Card>
                   </Col>
                   <Col span={6}>
-                    <Card size="small" style={{ background: '#262626' }}>
+                    <Card size="small" className="glass-card">
                       <Statistic 
                         title="酒精含量" 
-                        value={sensorData.alcohol_content} 
+                        value={sensorData.alcohol} 
                         suffix="%"
                         precision={1}
                       />

@@ -65,14 +65,15 @@ export default function MainLayout() {
   ]
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
       <Sider 
         trigger={null} 
         collapsible 
         collapsed={collapsed}
+        className="glass-shell"
         style={{
-          background: '#1f1f1f',
-          borderRight: '1px solid #303030',
+          background: 'var(--bg-panel)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
         <div 
@@ -81,10 +82,10 @@ export default function MainLayout() {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            borderBottom: '1px solid #303030',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
-          <Text strong style={{ fontSize: collapsed ? 16 : 18, color: '#1890ff' }}>
+          <Text strong style={{ fontSize: collapsed ? 16 : 18, color: 'var(--accent-blue)' }}>
             {collapsed ? '🍺' : '🍺 酿酒数字孪生'}
           </Text>
         </div>
@@ -99,12 +100,13 @@ export default function MainLayout() {
         />
       </Sider>
       
-      <Layout>
+      <Layout style={{ background: 'transparent' }}>
         <Header 
+          className="glass-shell"
           style={{ 
             padding: '0 24px', 
-            background: '#1f1f1f',
-            borderBottom: '1px solid #303030',
+            background: 'var(--bg-panel)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -142,11 +144,12 @@ export default function MainLayout() {
         </Header>
         
         <Content 
+          className="glass-shell"
           style={{ 
             margin: 16, 
             padding: 16, 
-            background: '#141414',
-            borderRadius: 8,
+            background: 'var(--bg-panel)',
+            borderRadius: 16,
             overflow: 'auto',
           }}
         >

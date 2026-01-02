@@ -15,6 +15,8 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
     List<Alarm> findByStatus(String status);
     
     List<Alarm> findByLevel(String level);
+
+    List<Alarm> findByLevelAndStatus(String level, String status);
     
     Page<Alarm> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
     

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { 
   Row, Col, Card, Table, Tag, Space, Input, Select, 
-  Button, Modal, Descriptions, Statistic, Typography, Tooltip 
+  Button, Modal, Descriptions, Statistic, Typography 
 } from 'antd'
 import {
   SearchOutlined,
@@ -14,7 +14,7 @@ import ReactECharts from 'echarts-for-react'
 import { pitsApi } from '@/services/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 const { Option } = Select
 
 interface Pit {
@@ -63,24 +63,45 @@ export default function PitMonitor() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [pitsResult, statsResult, heatmapResult] = await Promise.allSettled([
+      // 先加载主要数据（快速）
+      const [pitsResult, statsResult] = await Promise.allSettled([
         pitsApi.list({ status: statusFilter }),
         pitsApi.getStats(),
-        pitsApi.getHeatmap(),
       ])
+      
       if (pitsResult.status === 'fulfilled') {
-        setPits(pitsResult.value as Pit[])
+        let pitsData = pitsResult.value as any
+        if (pitsData?.data) pitsData = pitsData.data
+        if (Array.isArray(pitsData)) {
+          setPits(pitsData as Pit[])
+        }
       }
+      
       if (statsResult.status === 'fulfilled') {
-        setStats(statsResult.value)
-      }
-      if (heatmapResult.status === 'fulfilled') {
-        setHeatmapData(heatmapResult.value as unknown as any[])
+        let statsData = statsResult.value as any
+        if (statsData?.data) statsData = statsData.data
+        setStats(statsData)
       }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
       setLoading(false)
+    }
+    
+    // 延迟加载热力图（慢速API，不阻塞主数据显示）
+    loadHeatmapAsync()
+  }
+  
+  const loadHeatmapAsync = async () => {
+    try {
+      const heatmapResult = await pitsApi.getHeatmap()
+      let heatmapDataResult = heatmapResult as any
+      if (heatmapDataResult?.data) heatmapDataResult = heatmapDataResult.data
+      if (Array.isArray(heatmapDataResult)) {
+        setHeatmapData(heatmapDataResult)
+      }
+    } catch (error) {
+      console.error('加载热力图失败:', error)
     }
   }
 

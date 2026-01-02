@@ -14,6 +14,7 @@ import {
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { useStore } from '@/store'
+import GlobalSimulationRunner from '@/components/GlobalSimulationRunner'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
@@ -153,6 +154,7 @@ export default function MainLayout() {
             overflow: 'auto',
           }}
         >
+          <GlobalSimulationRunner />
           <Outlet />
         </Content>
       </Layout>

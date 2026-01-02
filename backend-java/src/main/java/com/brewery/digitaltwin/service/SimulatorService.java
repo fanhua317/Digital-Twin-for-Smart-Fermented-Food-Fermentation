@@ -94,6 +94,19 @@ public class SimulatorService {
                 pitRepository.save(pit);
             }
             
+            // 更新热力图缓存
+            com.brewery.digitaltwin.dto.HeatmapData hd = new com.brewery.digitaltwin.dto.HeatmapData();
+            hd.setPitId(pit.getId());
+            hd.setPitNo(pit.getPitNo());
+            hd.setZone(pit.getZone());
+            hd.setRow(pit.getRow());
+            hd.setCol(pit.getCol());
+            hd.setStatus(newStatus);
+            hd.setTemperature(data.getTemperature());
+            hd.setHumidity(data.getHumidity());
+            hd.setPhValue(data.getPhValue());
+            dashboardService.updateHeatmapCache(pit.getId(), hd);
+            
             // 构建WebSocket消息
             Map<String, Object> dataMap = new HashMap<>();
             dataMap.put("pitId", pit.getId());

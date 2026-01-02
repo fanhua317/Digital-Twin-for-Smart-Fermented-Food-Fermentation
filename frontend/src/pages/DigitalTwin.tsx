@@ -1,24 +1,19 @@
 import { useState } from 'react'
-import { Card, Row, Col, Typography, Space, Tag, Button, Tabs, Slider, Switch } from 'antd'
+import { Card, Row, Col, Typography, Space, Tag, Button, Tabs, Switch } from 'antd'
 import {
   AppstoreOutlined,
-  PlayCircleOutlined,
-  PauseCircleOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-  SettingOutlined,
 } from '@ant-design/icons'
 import ReactECharts from 'echarts-for-react'
+import SimulationController from '../components/3d/SimulationController'
+import PerformanceAnalysis from '../components/3d/PerformanceAnalysis'
+import Scene from '../components/3d/Scene'
 
-const { Title, Text, Paragraph } = Typography
+const { Title, Text } = Typography
 
 export default function DigitalTwin() {
-  const [isPlaying, setIsPlaying] = useState(false)
   const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d')
   const [showLabels, setShowLabels] = useState(true)
-  const [timeSpeed, setTimeSpeed] = useState(1)
 
-  // 模拟3D场景的2D俯视图
   const sceneOption = {
     tooltip: { trigger: 'item' },
     grid: { left: 40, right: 40, top: 40, bottom: 40 },
@@ -47,7 +42,7 @@ export default function DigitalTwin() {
           10 + Math.floor(i / 10) * 10,
         ]),
         itemStyle: { 
-          color: (params: any) => {
+          color: () => {
             const status = Math.random()
             if (status > 0.7) return '#42e07b'
             if (status > 0.3) return '#5bc0ff'
@@ -81,15 +76,18 @@ export default function DigitalTwin() {
         polyline: true,
         lineStyle: { color: '#5bc0ff', width: 2, type: 'dashed' },
         effect: {
-          show: isPlaying,
+          show: false, // 车间概览默认不播放动画，仿真模拟在 SimulationController 中控制
           period: 4,
           trailLength: 0.2,
           symbol: 'arrow',
           symbolSize: 8,
         },
         data: [
-          { coords: [[5, 50], [60, 50], [60, 20], [90, 20]] },
-          { coords: [[5, 70], [60, 70], [60, 85], [90, 85]] },
+          { coords: [[10, 20], [10, 50], [30, 50]] }, // 起窖 -> 配料
+          { coords: [[30, 50], [50, 50]] }, // 配料 -> 上甑
+          { coords: [[50, 50], [70, 50]] }, // 上甑 -> 馏酒
+          { coords: [[70, 50], [90, 50]] }, // 馏酒 -> 摊凉
+          { coords: [[90, 50], [90, 20], [60, 20]] }, // 摊凉 -> 入池
         ]
       }
     ]
@@ -163,10 +161,14 @@ export default function DigitalTwin() {
                 </Space>
               }
             >
-              <div style={{ position: 'relative' }}>
-                <ReactECharts option={sceneOption} style={{ height: 400 }} />
+              <div style={{ position: 'relative', height: 400 }}>
+                {viewMode === '3d' ? (
+                  <Scene isPlaying={false} mode="monitor" />
+                ) : (
+                  <ReactECharts option={sceneOption} style={{ height: 400 }} />
+                )}
                 
-                {/* 控制面板 */}
+                {/* 车间概览不显示播放按钮，仅用于静态查看 */}
                 <div style={{ 
                   position: 'absolute', 
                   bottom: 16, 
@@ -176,14 +178,6 @@ export default function DigitalTwin() {
                   borderRadius: 8,
                 }}>
                   <Space>
-                    <Button
-                      type="text"
-                      icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      style={{ color: '#fff' }}
-                    >
-                      {isPlaying ? '暂停' : '播放'}
-                    </Button>
                     <Text style={{ color: '#b7bcc7' }}>标签</Text>
                     <Switch 
                       size="small" 
@@ -261,40 +255,12 @@ export default function DigitalTwin() {
     {
       key: 'simulation',
       label: '仿真模拟',
-      children: (
-        <Card className="glass-card">
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <AppstoreOutlined style={{ fontSize: 64, color: '#5bc0ff' }} />
-            <Title level={4} style={{ marginTop: 24 }}>仿真模拟功能</Title>
-            <Paragraph type="secondary">
-              基于Unity和3D建模的高精度数字孪生仿真模块正在开发中...
-            </Paragraph>
-            <Space style={{ marginTop: 24 }}>
-              <Button type="primary" disabled>启动仿真</Button>
-              <Button disabled>加载场景</Button>
-            </Space>
-          </div>
-        </Card>
-      ),
+      children: <SimulationController />,
     },
     {
       key: 'analysis',
       label: '性能分析',
-      children: (
-        <Card className="glass-card">
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <SettingOutlined style={{ fontSize: 64, color: '#42e07b' }} />
-            <Title level={4} style={{ marginTop: 24 }}>智能分析功能</Title>
-            <Paragraph type="secondary">
-              基于机器学习的生产预测与优化分析模块正在开发中...
-            </Paragraph>
-            <Space style={{ marginTop: 24 }}>
-              <Button type="primary" disabled>生成报告</Button>
-              <Button disabled>预测分析</Button>
-            </Space>
-          </div>
-        </Card>
-      ),
+      children: <PerformanceAnalysis />,
     },
   ]
 

@@ -12,6 +12,9 @@
   "dependencies": {
     "@ant-design/charts": "^2.0.3",
     "@ant-design/icons": "^5.2.6",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@types/three": "^0.182.0",
     "antd": "^5.13.2",
     "axios": "^1.6.5",
     "dayjs": "^1.11.10",
@@ -20,6 +23,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.2",
+    "three": "^0.182.0",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

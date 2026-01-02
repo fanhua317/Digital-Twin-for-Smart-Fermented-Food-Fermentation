@@ -5,7 +5,7 @@ const apiBaseUrl = isDevServer ? 'http://localhost:8000/api/v1' : '/api/v1'
 
 const api = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 30000,
+  timeout: 10000,  // 缩短超时时间到10秒
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,10 +26,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     const payload = response.data
+    console.log('API Response interceptor - raw payload:', payload)
     if (payload && typeof payload === 'object' && 'success' in payload) {
       if (!payload.success) {
         return Promise.reject(new Error(payload.message || 'API Error'))
       }
+      console.log('API Response interceptor - returning data:', payload.data)
       return payload.data
     }
     return payload

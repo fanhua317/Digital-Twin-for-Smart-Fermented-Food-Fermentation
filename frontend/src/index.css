@@ -144,3 +144,55 @@ body {
 .accent-blue {
   color: var(--accent-blue);
 }
+
+/* 仿真面板样式 */
+.simulation-card .ant-card-head {
+  background: rgba(26, 28, 36, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.simulation-card .ant-card-body {
+  background: rgba(18, 20, 26, 0.4);
+}
+
+.simulation-log-table .ant-table {
+  background: transparent !important;
+}
+
+.simulation-log-table .ant-table-thead > tr > th {
+  background: rgba(26, 28, 36, 0.8) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 12px;
+  padding: 8px !important;
+}
+
+.simulation-log-table .ant-table-tbody > tr > td {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  font-size: 12px;
+  padding: 6px 8px !important;
+}
+
+.simulation-log-table .ant-table-tbody > tr:hover > td {
+  background: rgba(91, 192, 255, 0.08) !important;
+}
+
+.simulation-log-table .ant-empty-description {
+  color: var(--text-muted);
+}
+
+/* 仿真状态徽章闪烁 */
+@keyframes simulation-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(66, 224, 123, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(66, 224, 123, 0);
+  }
+}
+
+.simulation-running {
+  animation: simulation-pulse 2s infinite;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { 
   Row, Col, Card, Table, Tag, Space, Button, 
-  Typography, Modal, Form, Input, InputNumber, Select, message 
+  Typography, Modal, Form, InputNumber, Select, message 
 } from 'antd'
 import {
   PlusOutlined,

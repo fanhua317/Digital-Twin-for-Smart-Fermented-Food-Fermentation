@@ -11,6 +11,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+
+
 import java.time.LocalDateTime;
 import java.util.Random;
 
@@ -22,7 +24,10 @@ import java.util.Random;
 @Order(1)
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
-    
+
+    private final PitSensorDataRepository pitSensorDataRepository;
+    private final DeviceDataRepository deviceDataRepository;
+
     private final PitRepository pitRepository;
     private final DeviceRepository deviceRepository;
     private final ProductionBatchRepository batchRepository;
@@ -45,6 +50,7 @@ public class DataInitializer implements ApplicationRunner {
                 initPits();
                 initDevices();
                 initBatches();
+                initHistoryData();//新增
                 log.info("演示数据初始化完成: {} 窖池, {} 设备", totalPits, totalDevices);
             } else {
                 log.info("数据库已有数据 ({} 窖池)，跳过初始化", count);
@@ -111,5 +117,51 @@ public class DataInitializer implements ApplicationRunner {
             }
             batchRepository.save(batch);
         }
+    }
+
+    // 新增的辅助方法
+    private void initHistoryData() {
+        log.info("正在生成初始历史监测数据...");
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. 为每个窖池生成过去 24 小时的监测数据
+        pitRepository.findAll().forEach(pit -> {
+            for (int i = 24; i >= 0; i--) {
+                PitSensorData data = new PitSensorData();
+                data.setPitId(pit.getId());
+
+                // --- 补全所有字段，防止空指针 ---
+                data.setTemperature(20.0 + random.nextDouble() * 10.0);
+                data.setHumidity(40.0 + random.nextDouble() * 30.0);
+                data.setPhValue(3.5 + random.nextDouble() * 1.5);
+
+                // 修复：必须初始化这些字段，否则 SimulatorService 会报空指针
+                data.setAcidity(0.5 + random.nextDouble() * 1.0); // 0.5 - 1.5
+                data.setMoisture(50.0 + random.nextDouble() * 20.0); // 50% - 70%
+                data.setAlcohol(5.0 + random.nextDouble() * 10.0);   // 5% - 15%
+
+                data.setRecordedAt(now.minusHours(i));
+                pitSensorDataRepository.save(data);
+            }
+        });
+
+        // 2. 为每个设备生成数据 (这部分应该没问题，但建议检查)
+        deviceRepository.findAll().forEach(device -> {
+            if ("running".equals(device.getStatus())) {
+                for (int i = 24; i >= 0; i--) {
+                    DeviceData data = new DeviceData();
+                    data.setDeviceId(device.getId());
+                    data.setCurrent(10.0 + random.nextDouble() * 5.0);
+                    data.setTemperature(40.0 + random.nextDouble() * 20.0);
+                    data.setVibration(0.5 + random.nextDouble() * 2.0);
+                    // 补全 SimulatorService 可能用到的字段
+                    data.setPower(10.0 + random.nextDouble() * 10.0);
+                    data.setSpeed(1000.0 + random.nextDouble() * 500.0);
+
+                    data.setRecordedAt(now.minusHours(i));
+                    deviceDataRepository.save(data);
+                }
+            }
+        });
     }
 }

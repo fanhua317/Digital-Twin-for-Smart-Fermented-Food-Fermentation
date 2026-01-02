@@ -1,0 +1,37 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: brewing-digital-twin
+  
+  datasource:
+    url: jdbc:h2:mem:brewing;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 应用配置
+app:
+  name: 智慧酒厂数字孪生系统
+  version: 1.0.0
+  total-pits: 100
+  total-devices: 50
+  simulator:
+    enabled: true
+    interval: 5000

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PitSensorDataRepository extends JpaRepository<PitSensorData, Long> {
@@ -21,4 +22,6 @@ public interface PitSensorDataRepository extends JpaRepository<PitSensorData, Lo
     List<PitSensorData> findLatestForAllPits();
     
     void deleteByRecordedAtBefore(LocalDateTime time);
+
+    Optional<PitSensorData> findTopByPitIdOrderByRecordedAtDesc(Long pitId);
 }

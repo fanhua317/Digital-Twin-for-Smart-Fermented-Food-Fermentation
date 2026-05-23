@@ -142,3 +142,30 @@
 | Maven 重新构建成功 | ✅ BUILD SUCCESS |
 | 后端启动成功 | ✅ Tomcat on 8000 |
 | 前端无运行时报错 | ✅ Vite 仍在线服务 |
+
+---
+
+## 2026-05-23 15:15:00
+
+### 任务描述
+根据浏览器控制台日志修复 CORS 403 与 WebSocket 连接失败 bug。
+
+### 问题现象（来自 console-log:127.0.0.1:49704）
+1. **PUT `/alarms/.../resolve` 全部返回 403 Forbidden**（`handleResolve` 与 `handleBatchResolve`）
+2. **WebSocket 持续报 error 事件**
+
+### 根因
+- **`WebConfig` CORS 白名单只允许 `localhost:3000` 与 `5173`**，但 IDE 内置 Browser Preview 通过 `127.0.0.1:49704` 加载页面，预检 OPTIONS 请求被拒，导致 PUT 请求收到 403
+- **`useWebSocket.ts` 仅识别 `port === '3000'` 才直连后端 8000**；非 3000 端口（如 49704）走 `window.location.host` 试图连 `ws://127.0.0.1:49704/ws/realtime`，目标不存在 WS 端点
+
+### 修复
+- `backend-java/.../config/WebConfig.java`：CORS 改为 `allowedOriginPatterns("*")`（与 `WebSocketConfig` 一致），允许任意 origin 模式 + 增加 `PATCH` 方法、`maxAge=3600`
+- `frontend/src/hooks/useWebSocket.ts`：判断条件改为「hostname 为 `localhost` / `127.0.0.1` 且页面端口非 8000 时直连后端 8000」，覆盖 Vite dev / Browser Preview / 后端自身访问三种场景
+
+### 验证
+| 验证项 | 结果 |
+|---|---|
+| OPTIONS preflight from `127.0.0.1:49704` | ✅ 200，`Access-Control-Allow-Origin: http://127.0.0.1:49704` |
+| PUT `/alarms/{id}/resolve` 带 Origin | ✅ 200 |
+| PUT `/alarms/resolve-batch` 批量 | ✅ 200，`{resolved: 3}` |
+| WebSocket 连接（Browser Preview）| ✅ 走 `ws://localhost:8000/ws/realtime`，连接稳定 |

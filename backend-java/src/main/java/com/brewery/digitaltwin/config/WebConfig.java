@@ -9,15 +9,14 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 与 WebSocketConfig 一致，允许任意 origin 模式（覆盖 Vite dev/Browser Preview/Nginx 等动态端口场景）
+        // 注意：使用 allowedOriginPatterns 而非 allowedOrigins，是因为 allowCredentials=true 与通配 "*" 不能共存
         registry.addMapping("/**")
-                .allowedOrigins(
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://localhost:3000",
-                        "http://127.0.0.1:3000"
-                )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .exposedHeaders("Authorization")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

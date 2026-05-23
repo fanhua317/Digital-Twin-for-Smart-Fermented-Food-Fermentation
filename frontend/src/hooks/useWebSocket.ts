@@ -17,8 +17,12 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
   const connect = useCallback(() => {
     if (isUnmountedRef.current) return
 
+    // 开发环境(localhost/127.0.0.1)直连后端 8000 端口，避免 Vite/Browser Preview 的 WS 代理问题
+    // 生产环境使用同源（由 nginx 等反向代理 /ws）
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.port === '3000'
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const isBackendItself = window.location.port === '8000'
+    const host = isDev && !isBackendItself
       ? `${window.location.hostname}:8000`
       : window.location.host
     const wsUrl = `${protocol}//${host}/ws/realtime`

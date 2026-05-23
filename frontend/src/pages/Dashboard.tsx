@@ -145,7 +145,11 @@ export default function Dashboard() {
 
   // 告警趋势图配置
   const alarmTrendOption = {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (val: any) =>
+        typeof val === 'number' ? val.toFixed(0) : val,
+    },
     grid: { left: 40, right: 20, top: 20, bottom: 30 },
     xAxis: {
       type: 'category',

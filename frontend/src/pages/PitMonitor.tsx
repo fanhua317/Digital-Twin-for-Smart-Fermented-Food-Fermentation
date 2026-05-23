@@ -241,7 +241,11 @@ export default function PitMonitor() {
 
   // 传感器历史数据图表配置
   const sensorChartOption = {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (val: any) =>
+        typeof val === 'number' ? val.toFixed(2) : val,
+    },
     legend: { 
       data: ['温度', 'pH值', '酸度'],
       textStyle: { color: '#b7bcc7' },

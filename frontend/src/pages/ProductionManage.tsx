@@ -129,7 +129,11 @@ export default function ProductionManage() {
 
   // 产量趋势图
   const productionChartOption = {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (val: any) =>
+        typeof val === 'number' ? val.toFixed(1) : val,
+    },
     legend: { 
       data: ['产量', '质量合格率'],
       textStyle: { color: '#b7bcc7' },

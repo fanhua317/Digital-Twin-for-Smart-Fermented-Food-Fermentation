@@ -202,3 +202,41 @@
 | Browser Preview 加载告警页 | 每秒新错误 | 无错误，3 个解决按钮正常 |
 | WebSocket 实际连接 | `is closed before the connection is established` | 连接稳定保持 |
 | 仅剩 warnings | 多 | 仅 React Router future flag + echarts-for-react 库内部 ResizeObserver 兼容性 warning（不影响功能）|
+
+---
+
+## 2026-05-23 15:25:00
+
+### 任务描述
+用户反馈窖池详情趋势图 tooltip 数值小数点过多（如 `24.115243542583535`、`3.3129902481299687`），需统一格式化。
+
+### 根因
+ECharts tooltip 默认透传 series 原始 `number` 值，后端模拟器输出的是高精度 `Math.random()` 浮点数。
+
+### 修复（统一使用 ECharts `valueFormatter`）
+
+| 文件 | 图表 | 小数位 |
+|---|---|---|
+| `frontend/src/pages/PitMonitor.tsx` | 传感器历史趋势 | 2 位 |
+| `frontend/src/pages/DeviceMonitor.tsx` | 设备运行数据 | 2 位 |
+| `frontend/src/pages/ProductionManage.tsx` | 产量趋势 | 1 位 |
+| `frontend/src/pages/Dashboard.tsx` | 24 小时告警趋势 | 0 位（整数）|
+
+统一模式：
+```ts
+tooltip: {
+  trigger: 'axis',
+  valueFormatter: (val: any) =>
+    typeof val === 'number' ? val.toFixed(2) : val,
+}
+```
+
+### 验证（Playwright 实测窖池 A-001 详情趋势图 tooltip）
+
+| 字段 | 修复前 | 修复后 |
+|---|---|---|
+| 温度 | `24.115243542583535` | **22.91** |
+| pH值 | `3.3129902481299687` | **3.43** |
+| 酸度 | `0.9614118816657118` | **0.95** |
+
+控制台 0 errors。修复完成。

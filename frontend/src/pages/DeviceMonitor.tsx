@@ -190,7 +190,11 @@ export default function DeviceMonitor() {
 
   // 设备运行数据图表
   const deviceChartOption = {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (val: any) =>
+        typeof val === 'number' ? val.toFixed(2) : val,
+    },
     legend: { 
       data: ['功率', '振动', '温度'],
       textStyle: { color: '#b7bcc7' },

@@ -26,6 +26,7 @@ interface DashboardStats {
   runningDevices: number
   faultDevices: number
   activeAlarms: number
+  alarmsByLevel?: Record<string, number>
   inProgressBatches: number
   totalProduction: number
   avgTemperature: number
@@ -213,7 +214,7 @@ export default function Dashboard() {
                         }
                       />
                       <Progress 
-                        percent={stats ? (stats.normalPits / stats.totalPits * 100) : 0} 
+                        percent={stats?.totalPits ? (stats.normalPits / stats.totalPits * 100) : 0} 
                         showInfo={false}
                         strokeColor="var(--accent-green)"
                         trailColor="rgba(255,255,255,0.06)"
@@ -235,7 +236,7 @@ export default function Dashboard() {
                         }
                       />
                       <Progress 
-                        percent={stats ? (stats.runningDevices / stats.totalDevices * 100) : 0} 
+                        percent={stats?.totalDevices ? (stats.runningDevices / stats.totalDevices * 100) : 0} 
                         showInfo={false}
                         strokeColor="var(--accent-green)"
                         trailColor="rgba(255,255,255,0.06)"
@@ -254,8 +255,8 @@ export default function Dashboard() {
                       />
                       <div style={{ marginTop: 8 }}>
                         <Space>
-                          <Badge status="error" text={<Text className="text-secondary">严重 {overview?.alarm_trend?.[0]?.count || 0}</Text>} />
-                          <Badge status="warning" text={<Text className="text-secondary">警告 {stats?.warningPits || 0}</Text>} />
+                          <Badge status="error" text={<Text className="text-secondary">严重 {stats?.alarmsByLevel?.critical || 0}</Text>} />
+                          <Badge status="warning" text={<Text className="text-secondary">警告 {stats?.alarmsByLevel?.warning || 0}</Text>} />
                         </Space>
                       </div>
                     </Card>
@@ -272,7 +273,7 @@ export default function Dashboard() {
                       />
                       <div style={{ marginTop: 8 }}>
                         <Text className="text-secondary">
-                          <FieldTimeOutlined /> 平均温度: {stats?.avgTemperature || 0}℃
+                          <FieldTimeOutlined /> 平均温度: {(stats?.avgTemperature ?? 0).toFixed(1)}℃
                         </Text>
                       </div>
                     </Card>

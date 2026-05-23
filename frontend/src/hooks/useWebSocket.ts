@@ -6,6 +6,8 @@ type MessageHandler = (data: any) => void
 export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler) {
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef<MessageHandler | undefined>(onMessage)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isUnmountedRef = useRef(false)
   const { setWsConnected, setActiveAlarms } = useStore()
 
   useEffect(() => {
@@ -13,6 +15,8 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
   }, [onMessage])
 
   const connect = useCallback(() => {
+    if (isUnmountedRef.current) return
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.port === '3000'
       ? `${window.location.hostname}:8000`
@@ -29,12 +33,12 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        
+
         // 更新活跃告警数
         if (data.type === 'dashboard_update' && data.data?.alarms?.active !== undefined) {
           setActiveAlarms(data.data.alarms.active)
         }
-        
+
         // 调用自定义处理器
         onMessageRef.current?.(data)
       } catch (error) {
@@ -45,9 +49,11 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
     ws.onclose = () => {
       console.log('WebSocket disconnected', ws.readyState)
       setWsConnected(false)
-      // 自动重连
-      setTimeout(() => {
-        if (wsRef.current === ws) {
+      // 卸载后不再触发重连
+      if (isUnmountedRef.current) return
+      // 自动重连（保存 timer 以便卸载时清除）
+      reconnectTimerRef.current = setTimeout(() => {
+        if (wsRef.current === ws && !isUnmountedRef.current) {
           connect()
         }
       }, 3000)
@@ -61,6 +67,7 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
   }, [channel, setWsConnected, setActiveAlarms])
 
   useEffect(() => {
+    isUnmountedRef.current = false
     connect()
 
     // 心跳
@@ -71,7 +78,12 @@ export function useWebSocket(channel: string = 'all', onMessage?: MessageHandler
     }, 30000)
 
     return () => {
+      isUnmountedRef.current = true
       clearInterval(heartbeat)
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
       if (wsRef.current) {
         wsRef.current.close()
         wsRef.current = null

@@ -102,7 +102,8 @@ public class DeviceController {
         if (data.isEmpty()) {
             return ApiResponse.error("暂无设备数据");
         }
-        return ApiResponse.success(data.get(data.size() - 1));
+        // 数据按 recordedAt DESC 排序，索引 0 才是最新一条
+        return ApiResponse.success(data.get(0));
     }
     
     @GetMapping("/data/latest")

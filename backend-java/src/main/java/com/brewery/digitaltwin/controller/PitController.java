@@ -83,14 +83,11 @@ public class PitController {
     
     @PutMapping("/{id}/status")
     public ApiResponse<Pit> updatePitStatus(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestParam String status,
-            @RequestParam(required = false) String batch_code) {
-        return pitService.getPitById(id)
-                .map(pit -> {
-                    pit.setStatus(status);
-                    return ApiResponse.success(pitService.updatePit(id, pit).get());
-                })
+            @RequestParam(name = "batch_code", required = false) String batchCode) {
+        return pitService.updatePitStatus(id, status, batchCode)
+                .map(ApiResponse::success)
                 .orElse(ApiResponse.error("窖池不存在"));
     }
     
@@ -107,7 +104,8 @@ public class PitController {
         if (data.isEmpty()) {
             return ApiResponse.error("暂无传感器数据");
         }
-        return ApiResponse.success(data.get(data.size() - 1));
+        // 数据按 recordedAt DESC 排序，索引 0 才是最新一条
+        return ApiResponse.success(data.get(0));
     }
     
     @GetMapping("/{id}/sensor-data")

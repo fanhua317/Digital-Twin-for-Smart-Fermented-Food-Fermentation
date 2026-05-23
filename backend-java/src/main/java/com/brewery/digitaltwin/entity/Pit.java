@@ -36,7 +36,9 @@ public class Pit {
     private String grapeType = "高粱";  // 原料类型
     
     private Integer fermentationDay = 0;  // 发酵天数
-    
+
+    private String currentBatchCode;  // 当前关联生产批次编号
+
     private LocalDateTime lastMaintenance;
     
     private LocalDateTime createdAt = LocalDateTime.now();

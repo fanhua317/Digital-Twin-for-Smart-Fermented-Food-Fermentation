@@ -178,13 +178,27 @@ export default function PitMonitor() {
     },
   ]
 
-  // 温度热力图配置
+  // 温度热力图配置 - 使用真实 row/col 坐标
+  // 后端窖池为 4 区(A/B/C/D) × 5 行 × 5 列, 这里按 (col, row) 投到 10×10 网格
+  // 区域 A,B 在上半部 (row 0-4), C,D 在下半部 (row 5-9)；A,C 列 0-4, B,D 列 5-9
+  const zoneToOffset: Record<string, [number, number]> = {
+    A: [0, 0],
+    B: [5, 0],
+    C: [0, 5],
+    D: [5, 5],
+  }
   const heatmapOption = {
     tooltip: {
       position: 'top',
       formatter: (params: any) => {
-        const data = heatmapData[params.dataIndex]
-        return `${data?.pitNo}<br/>温度: ${data?.temperature?.toFixed(1)}℃`
+        const v = params.value
+        const point = heatmapData.find((d) => {
+          const off = zoneToOffset[d.zone] || [0, 0]
+          return (off[0] + (d.col - 1)) === v[0] && (off[1] + (d.row - 1)) === v[1]
+        })
+        return point
+          ? `${point.pitNo}<br/>温度: ${point.temperature?.toFixed(1)}℃`
+          : `温度: ${v[2]?.toFixed?.(1) ?? '-'}℃`
       }
     },
     grid: { left: 40, right: 20, top: 20, bottom: 40 },
@@ -212,7 +226,12 @@ export default function PitMonitor() {
     },
     series: [{
       type: 'heatmap',
-      data: heatmapData.map((d, i) => [i % 10, Math.floor(i / 10), d.temperature]),
+      data: heatmapData
+        .filter((d) => d?.row && d?.col)
+        .map((d) => {
+          const [offX, offY] = zoneToOffset[d.zone] || [0, 0]
+          return [offX + (d.col - 1), offY + (d.row - 1), d.temperature]
+        }),
       label: { show: false },
       emphasis: {
         itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 0, 0, 0.5)' }

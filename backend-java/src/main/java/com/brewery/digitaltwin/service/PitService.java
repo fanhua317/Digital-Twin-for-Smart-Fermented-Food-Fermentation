@@ -53,6 +53,16 @@ public class PitService {
             return pitRepository.save(pit);
         });
     }
+
+    @Transactional
+    public Optional<Pit> updatePitStatus(Long id, String status, String batchCode) {
+        return pitRepository.findById(id).map(pit -> {
+            if (status != null) pit.setStatus(status);
+            if (batchCode != null) pit.setCurrentBatchCode(batchCode);
+            pit.setUpdatedAt(java.time.LocalDateTime.now());
+            return pitRepository.save(pit);
+        });
+    }
     
     public List<PitSensorData> getPitSensorData(Long pitId, Integer hours) {
         if (hours != null) {

@@ -110,7 +110,8 @@ export default function ProductionManage() {
       title: '目标产量',
       dataIndex: 'targetVolume',
       key: 'targetVolume',
-      render: (volume: number) => `${volume.toFixed(0)} kg`,
+      render: (volume: number | null | undefined) =>
+        volume != null ? `${volume.toFixed(0)} kg` : '-',
     },
     {
       title: '状态',

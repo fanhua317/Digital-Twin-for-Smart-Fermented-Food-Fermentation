@@ -132,29 +132,32 @@ public class SimulatorService {
         List<Map<String, Object>> dataList = new ArrayList<>();
         
         for (Device device : devices) {
-            if (!"running".equals(device.getStatus())) continue;
-            
+            // 维护中(maintenance)/停机(stopped) 不生成数据
+            if ("maintenance".equals(device.getStatus()) || "stopped".equals(device.getStatus())) continue;
+
             DeviceData data = new DeviceData();
             data.setDeviceId(device.getId());
             data.setPower(10 + random.nextDouble() * 50);
             data.setSpeed(1000 + random.nextDouble() * 2000);
-            data.setVibration(random.nextDouble() * 5);
-            data.setTemperature(40 + random.nextDouble() * 30);
+            // vibration ∈ [0, 10) 才能覆盖告警阈值（原 [0,5) 永远触发不了 fault/warning）
+            data.setVibration(random.nextDouble() * 10);
+            // temperature ∈ [40, 80) 维持运行区间为主, 偶发越界进入 warning/fault
+            data.setTemperature(40 + random.nextDouble() * 40);
             data.setCurrent(5 + random.nextDouble() * 20);
             
             deviceDataRepository.save(data);
             
-            // 更新设备状态
-            String newStatus = device.getStatus();
-            if (data.getVibration() > 8 || data.getTemperature() > 80) {
+            // 重新评估设备状态：基于当前样本，使状态可双向恢复
+            String newStatus;
+            if (data.getVibration() > 8 || data.getTemperature() > 75) {
                 newStatus = "fault";
-            } else if (data.getVibration() > 5 || data.getTemperature() > 65) {
+            } else if (data.getVibration() > 6 || data.getTemperature() > 65) {
                 newStatus = "warning";
             } else {
                 newStatus = "running";
             }
             
-            if (!device.getStatus().equals(newStatus)) {
+            if (!newStatus.equals(device.getStatus())) {
                 device.setStatus(newStatus);
                 device.setUpdatedAt(LocalDateTime.now());
             }
@@ -198,7 +201,8 @@ public class SimulatorService {
         Alarm alarm = new Alarm();
         alarm.setLevel(levels[random.nextInt(levels.length)]);
         alarm.setType(types[idx]);
-        alarm.setSource("pit-A-" + (random.nextInt(20) + 1));
+        // 根据告警类型从真实数据中选择来源，避免硬编码不存在的窖池号
+        alarm.setSource(pickAlarmSource(types[idx]));
         alarm.setMessage(messages[idx]);
         alarm.setStatus("active");
         
@@ -212,6 +216,25 @@ public class SimulatorService {
         } catch (Exception e) {
             log.error("告警广播失败", e);
         }
+    }
+
+    /**
+     * 根据告警类型从真实窖池/设备中挑选来源，避免硬编码无效编号
+     */
+    private String pickAlarmSource(String alarmType) {
+        boolean preferDevice = "device".equals(alarmType) || "system".equals(alarmType);
+        if (preferDevice) {
+            List<Device> devices = deviceRepository.findAll();
+            if (!devices.isEmpty()) {
+                return "device-" + devices.get(random.nextInt(devices.size())).getDeviceNo();
+            }
+        }
+        List<Pit> pits = pitRepository.findAll();
+        if (!pits.isEmpty()) {
+            return "pit-" + pits.get(random.nextInt(pits.size())).getPitNo();
+        }
+        // 数据库尚无数据时的兜底
+        return preferDevice ? "device-unknown" : "pit-unknown";
     }
 
     private void broadcastDashboardUpdate() {

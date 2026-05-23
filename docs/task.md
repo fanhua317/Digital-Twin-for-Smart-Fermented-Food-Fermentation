@@ -169,3 +169,36 @@
 | PUT `/alarms/{id}/resolve` 带 Origin | ✅ 200 |
 | PUT `/alarms/resolve-batch` 批量 | ✅ 200，`{resolved: 3}` |
 | WebSocket 连接（Browser Preview）| ✅ 走 `ws://localhost:8000/ws/realtime`，连接稳定 |
+
+---
+
+## 2026-05-23 15:20:00
+
+### 任务描述
+进一步根除 WebSocket 反复触发 `error` 事件的根本原因。
+
+### 问题现象
+即便 WebSocket URL 修复正确（`ws://127.0.0.1:8000/ws/realtime`），浏览器仍持续每 3 秒打印 `WebSocket error: {isTrusted:true} 3`。
+
+### 根因（systematic debugging）
+通过 Playwright 实测捕获到关键告警：
+> `WebSocket connection to 'ws://127.0.0.1:8000/ws/realtime' failed: WebSocket is closed before the connection is established.`
+
+定位到根因：
+- React 18 `StrictMode` 在 dev 模式下会让 `useEffect` 执行 mount → unmount → mount 双重渲染
+- 第一次 mount 创建 WebSocket（CONNECTING 状态）→ 立即 cleanup 调用 `ws.close()` → 触发 `onerror`（readyState=3）
+- 之前 `useCallback` 依赖 store actions 也可能引发 effect 重跑
+
+### 修复 `frontend/src/hooks/useWebSocket.ts`（重写）
+1. **`safeCloseWebSocket()`**：CONNECTING 时延迟到 `open` 事件后再 close，避免握手期间被关闭触发 `onerror`
+2. **store actions 用 ref 持有**：`setWsConnectedRef`/`setActiveAlarmsRef` 保持稳定引用，`useEffect` deps 收窄到 `[channel]`，不会因为 store 变化重跑
+3. **`isCancelled` 标志**：cleanup 立即标记，所有异步回调（`onopen`/`onclose`/`onerror`/重连定时器）都先检查取消状态
+4. **`onerror` 静默化**：cancel 状态下不打日志，正常运行下降级为 `console.warn`
+
+### 验证（Playwright 实测）
+| 验证项 | 修复前 | 修复后 |
+|---|---|---|
+| 控制台 errors | 持续涌现 `WebSocket error 3` | **0 errors** |
+| Browser Preview 加载告警页 | 每秒新错误 | 无错误，3 个解决按钮正常 |
+| WebSocket 实际连接 | `is closed before the connection is established` | 连接稳定保持 |
+| 仅剩 warnings | 多 | 仅 React Router future flag + echarts-for-react 库内部 ResizeObserver 兼容性 warning（不影响功能）|

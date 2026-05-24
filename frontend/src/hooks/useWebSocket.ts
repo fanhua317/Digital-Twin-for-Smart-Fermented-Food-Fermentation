@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/store'
+import { updateLiveAgvCache } from '@/store/liveData'
 
 type MessageHandler = (data: any) => void
 
@@ -44,6 +45,7 @@ function ensureSharedWs() {
   const setWsConnected = useStore.getState().setWsConnected
   const setActiveAlarms = useStore.getState().setActiveAlarms
   const setSimulation = useStore.getState().setSimulation
+  let lastSimReactUpdate = 0
 
   ws.onopen = () => {
     sharedWsConnecting = false
@@ -62,7 +64,14 @@ function ensureSharedWs() {
         setActiveAlarms(msg.data.alarms.active)
       }
       if (msg.type === 'sim_snapshot' && msg.data) {
-        setSimulation(msg.data)
+        // ① 立即写入 mutable cache（不触发任何 React 渲染，供 useFrame 每帧读取）
+        if (msg.data.agvs) updateLiveAgvCache(msg.data.agvs)
+        // ② 节流 React store 更新：每 2s 一次（驱动 UI 卡片/统计，不驱动 3D 动画）
+        const now = Date.now()
+        if (now - lastSimReactUpdate >= 2000) {
+          lastSimReactUpdate = now
+          setSimulation(msg.data)
+        }
       }
       // 广播给所有订阅者
       subscribers.forEach((s) => {

@@ -1,6 +1,6 @@
 import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Stars, Text as ThreeText, Html } from '@react-three/drei'
+import { OrbitControls, Stars, Text as ThreeText } from '@react-three/drei'
 import * as THREE from 'three'
 import PitModel from './PitModel'
 import DeviceModel from './DeviceModel'
@@ -8,7 +8,7 @@ import AGVModel from './AGVModel'
 import DistillationTower from './DistillationTower'
 import CameraController from './CameraController'
 import { useWebSocket } from '../../hooks/useWebSocket'
-import { useStore, EquipmentState, AGVState as AgvState } from '../../store'
+import { useStore, EquipmentState } from '../../store'
 import { pitsApi } from '../../services/api'
 
 interface SceneProps {
@@ -46,7 +46,7 @@ function WaterPipe() {
   return (
     <group>
       <mesh>
-        <tubeGeometry args={[path, 64, 0.2, 8, false]} />
+        <tubeGeometry args={[path, 16, 0.2, 6, false]} />
         <meshStandardMaterial color="#4fc3f7" metalness={0.6} roughness={0.2} opacity={0.9} transparent />
       </mesh>
       {[-20, -15, -10, -5, 0].map(x => (
@@ -85,13 +85,20 @@ function ProcessFlowArrow({ from, to, color = '#42e07b', label }: {
         <coneGeometry args={[0.45, 1.2, 4]} />
         <meshStandardMaterial color={color} transparent opacity={0.85} />
       </mesh>
-      {/* 标签 */}
+      {/* 标签：用 ThreeText 代替 Html，消除 7 个常驻 Html useFrame DOM 投影 */}
       {label && (
-        <Html position={[mid.x, mid.y, mid.z]} center distanceFactor={18} style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/70 text-white px-2 py-0.5 rounded text-[10px] border border-white/15 whitespace-nowrap">
-            {label}
-          </div>
-        </Html>
+        <ThreeText
+          position={[mid.x, mid.y + 0.5, mid.z]}
+          fontSize={0.7}
+          color={color}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.06}
+          outlineColor="#000"
+          renderOrder={1}
+        >
+          {label}
+        </ThreeText>
       )}
     </group>
   )
@@ -119,33 +126,33 @@ function LiquorTanks({ headLevel, midLevel, tailLevel, capacity, midAlcohol }: {
           <group key={i} position={[t.x, 0, 4]}>
             {/* 罐体外壳 (透明圆筒) */}
             <mesh position={[0, 1.5, 0]}>
-              <cylinderGeometry args={[0.8, 0.8, 3, 24, 1, true]} />
+              <cylinderGeometry args={[0.8, 0.8, 3, 12, 1, true]} />
               <meshStandardMaterial color="#cccccc" metalness={0.7} roughness={0.3} transparent opacity={0.35} side={THREE.DoubleSide} />
             </mesh>
             {/* 罐顶 */}
             <mesh position={[0, 3.1, 0]}>
-              <cylinderGeometry args={[0.85, 0.8, 0.15, 24]} />
+              <cylinderGeometry args={[0.85, 0.8, 0.15, 12]} />
               <meshStandardMaterial color="#888" metalness={0.8} roughness={0.3} />
             </mesh>
             {/* 罐底支架 */}
             <mesh position={[0, 0.1, 0]}>
-              <cylinderGeometry args={[0.9, 0.9, 0.2, 24]} />
+              <cylinderGeometry args={[0.9, 0.9, 0.2, 12]} />
               <meshStandardMaterial color="#444" />
             </mesh>
             {/* 酒液 (按比例填充) */}
             {fillHeight > 0.01 && (
               <mesh position={[0, 0.2 + fillHeight / 2, 0]}>
-                <cylinderGeometry args={[0.76, 0.76, fillHeight, 24]} />
+                <cylinderGeometry args={[0.76, 0.76, fillHeight, 12]} />
                 <meshStandardMaterial color={t.color} transparent opacity={0.85} emissive={t.color} emissiveIntensity={0.15} />
               </mesh>
             )}
-            {/* 标签 */}
-            <Html position={[0, 3.7, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
-              <div className="px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] border border-white/15 whitespace-nowrap">
-                {t.name} <span style={{ color: t.color }}>{t.level.toFixed(0)}kg</span>
-                <div className="text-[8px] text-gray-300">{t.ratio}</div>
-              </div>
-            </Html>
+            {/* 标签：ThreeText 代替 Html，无 DOM 投影开销 */}
+            <ThreeText position={[0, 3.9, 0]} fontSize={0.5} color={t.color} anchorX="center" anchorY="middle" outlineWidth={0.04} outlineColor="#000" renderOrder={1}>
+              {`${t.name} ${t.level.toFixed(0)}kg`}
+            </ThreeText>
+            <ThreeText position={[0, 3.3, 0]} fontSize={0.38} color="#aaaaaa" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000" renderOrder={1}>
+              {t.ratio}
+            </ThreeText>
           </group>
         )
       })}
@@ -153,24 +160,6 @@ function LiquorTanks({ headLevel, midLevel, tailLevel, capacity, midAlcohol }: {
   )
 }
 
-/** 工艺流程图例 (3D 场景 HUD) */
-function ProcessLegend() {
-  return (
-    <Html position={[-32, 14, 0]} center distanceFactor={26} style={{ pointerEvents: 'none' }}>
-      <div className="bg-black/75 backdrop-blur-sm text-white px-3 py-2 rounded-lg border border-white/15 min-w-[180px]">
-        <div className="text-xs font-bold mb-1.5 text-yellow-300">🏭 浓香型白酒工艺流程</div>
-        <div className="text-[10px] space-y-0.5">
-          <div><span className="text-cyan-300">1.</span> 起糟 (AGV-01) - 出窖糟醅</div>
-          <div><span className="text-cyan-300">2.</span> 配料拌粮 (搅拌机)</div>
-          <div><span className="text-cyan-300">3.</span> 上甑 (机器人, AGV-03)</div>
-          <div><span className="text-cyan-300">4.</span> 蒸馏接酒 (头/中/尾分级)</div>
-          <div><span className="text-cyan-300">5.</span> 摊凉加曲 (5% 曲粉)</div>
-          <div><span className="text-cyan-300">6.</span> 入池发酵 60 天</div>
-        </div>
-      </div>
-    </Html>
-  )
-}
 
 interface PitView {
   id: number
@@ -198,10 +187,12 @@ function toMaterialInfo(eq?: EquipmentState) {
   }
 }
 
+/** AGV 编号固定，不变 - 用常量避免每次渲染都创建新数组 */
+const AGV_CODES = ['AGV-01', 'AGV-02', 'AGV-03', 'AGV-04', 'AGV-05', 'AGV-06', 'AGV-07', 'AGV-08']
+
 export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 }: SceneProps) {
   // 用细粒度 selector 减少不必要的整树重渲染
   const equipments = useStore((s) => s.simulation?.equipments) || {}
-  const agvs = useStore((s) => s.simulation?.agvs) || {}
   // 3D 内仍需 liquorStorage 驱动东侧三联储罐模型, 其余 KPI 已由 SceneHUDStrip 独立订阅
   const liquorStorage = useStore((s) => s.simulation?.liquorStorage)
   const [pits, setPits] = useState<PitView[]>([])
@@ -299,7 +290,7 @@ export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 
   ]
 
   return (
-    <div className="w-full h-full bg-gray-900 rounded-lg overflow-hidden">
+    <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
       {/* 性能优化：限制设备像素比 + 关闭阴影 (大幅减少每帧 GPU 负担) */}
       <Canvas
         camera={{ position: [40, 40, 40], fov: 45 }}
@@ -317,7 +308,7 @@ export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 
 
           {/* 用固定平面 + 网格纹理代替 infiniteGrid (后者每帧都做透明 quad 渲染) */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-            <planeGeometry args={[160, 160, 32, 32]} />
+            <planeGeometry args={[160, 160, 8, 8]} />
             <meshStandardMaterial color="#0a1814" wireframe={false} />
           </mesh>
           <gridHelper args={[160, 32, '#42e07b', '#1a2e22']} position={[0, 0.01, 0]} />
@@ -378,21 +369,9 @@ export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 
             />
           ))}
 
-          {/* 8 台 AGV - 位置/状态完全由后端驱动 */}
-          {Object.values(agvs).map((agv: AgvState) => (
-            <AGVModel
-              key={agv.code}
-              agvId={agv.code}
-              position={agv.position as [number, number, number]}
-              status={isPlaying ? agv.stage : 'stopped'}
-              cargoType={(agv.cargoType as any) || 'empty'}
-              weight={agv.weight}
-              weightCapacity={agv.weightCapacity}
-              temperature={agv.temperature}
-              ph={agv.ph}
-              task={agv.task}
-              sourcePitNo={agv.sourcePitNo}
-            />
+          {/* 8 台 AGV - 位置/状态完全通过 liveAgvCache 驱动，不再订阅 agvs store */}
+          {AGV_CODES.map(code => (
+            <AGVModel key={code} agvId={code} isPlaying={isPlaying} />
           ))}
 
           {/* 蒸馏塔 */}
@@ -424,8 +403,6 @@ export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 
           <ProcessFlowArrow from={[0, 0, 0]} to={[25, 0, 0]} color="#52c41a" label="⑤ 蒸馏→摊凉" />
           <ProcessFlowArrow from={[25, 0, 0]} to={[38, 0, -22]} color="#13c2c2" label="⑥ 摊凉→B 区" />
           <ProcessFlowArrow from={[25, 0, 0]} to={[38, 0, 18]} color="#36cfc9" label="⑦ 摊凉→D 区" />
-          {/* 工艺流程图例 (左上角 HUD) */}
-          <ProcessLegend />
 
           {/* 区域标识 */}
           <ThreeText position={[-25, 8, -15]} fontSize={3} color="#ffffff" outlineWidth={0.1} outlineColor="#000">配料区</ThreeText>
@@ -441,8 +418,18 @@ export default function Scene({ isPlaying, mode = 'monitor', simulationStep = 0 
         </Suspense>
       </Canvas>
 
-      {/* HUDs 已移到 3D 场景之外 (SimulationController 顶部横向条),
-          避免遮挡视野并保持 3D 渲染线程性能 */}
+      {/* 工艺流程图例：2D overlay (移出 Canvas 避免 Html useFrame 投影开销) */}
+      <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm text-white px-3 py-2 rounded-lg border border-white/15 pointer-events-none" style={{ zIndex: 10 }}>
+        <div className="text-xs font-bold mb-1 text-yellow-300">浓香型白酒工艺流程</div>
+        <div className="text-[10px] space-y-0.5">
+          <div><span className="text-cyan-300">1.</span> 起糟 - 出窖糟醅</div>
+          <div><span className="text-cyan-300">2.</span> 配料拌粮</div>
+          <div><span className="text-cyan-300">3.</span> 上甑蒸馏</div>
+          <div><span className="text-cyan-300">4.</span> 分级摘酒</div>
+          <div><span className="text-cyan-300">5.</span> 摊凉加曲</div>
+          <div><span className="text-cyan-300">6.</span> 入池发酵 60 天</div>
+        </div>
+      </div>
     </div>
   )
 }

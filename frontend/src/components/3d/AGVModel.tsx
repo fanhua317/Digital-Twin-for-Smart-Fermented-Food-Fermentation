@@ -1,23 +1,16 @@
-import { memo, useEffect, useRef } from 'react'
-import { Html } from '@react-three/drei'
+import { memo, useRef, useState } from 'react'
+import { Html, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { liveAgvCache, LiveAGVEntry } from '@/store/liveData'
 
 export type CargoType = 'grain' | 'fermented' | 'mixed' | 'distilled' | 'cooled' | 'empty'
 
 interface AGVModelProps {
+  /** AGV 编号，挂载后不变 */
   agvId: string
-  /** 由后端驱动的目标位置，组件内平滑插值跟随 */
-  position: [number, number, number]
-  /** AGV 阶段 (loading/moving/unloading/returning) 或 'stopped' */
-  status: string
-  cargoType?: CargoType
-  weight?: number
-  weightCapacity?: number
-  temperature?: number
-  ph?: number
-  task?: string
-  sourcePitNo?: string
+  /** 全局暂停时停止插值 */
+  isPlaying: boolean
 }
 
 const CARGO_COLORS: Record<CargoType, string> = {
@@ -45,92 +38,75 @@ const STAGE_TEXT: Record<string, string> = {
   stopped: '暂停',
 }
 
-/**
- * 后端每 500ms 推送一帧 AGV 目标位置 (ProcessSimulationService.tick 频率 500ms)。
- * 插值窗设为 600ms (略大于 500ms tick), 这样:
- *   - AGV 在 0.5s 时走了 ~83% 路程, 此时新帧到来
- *   - fromPos = 当前位置 (mid-flight), toPos = 新目标 → 持续匀速移动
- *   - 永远不会 "到达后等待", 视觉上完全连续
- *
- * 容差: 0.3 单位 (因 500ms 步长更小，对应 AGV 单帧位移更短)
- */
+/** 后端 500ms tick，插值窗略大 */
 const BACKEND_TICK_MS = 600
 const POSITION_TOLERANCE = 0.3
 
-function AGVModelImpl({
-  agvId,
-  position,
-  status,
-  cargoType = 'empty',
-  weight = 0,
-  weightCapacity = 900,
-  temperature = 25,
-  ph = 4,
-  task = '',
-  sourcePitNo,
-}: AGVModelProps) {
+const EMPTY_LIVE: LiveAGVEntry = {
+  position: [0, 0, 0], stage: 'idle', cargoType: 'empty',
+  weight: 0, weightCapacity: 900, temperature: 25, ph: 4, task: '',
+}
+
+function AGVModelImpl({ agvId, isPlaying }: AGVModelProps) {
   const group = useRef<THREE.Group>(null!)
-  const fromPos = useRef(new THREE.Vector3(position[0], position[1], position[2]))
-  const toPos = useRef(new THREE.Vector3(position[0], position[1], position[2]))
+  const fromPos = useRef(new THREE.Vector3())
+  const toPos = useRef(new THREE.Vector3())
   const tStartMs = useRef<number>(performance.now())
   const yawTarget = useRef<number>(0)
+  const [hovered, setHovered] = useState(false)
+  // 外观状态：仅在 stage/cargoType/weight 真正改变时更新（极低频）
+  const [vis, setVis] = useState<LiveAGVEntry>(EMPTY_LIVE)
+  const visRef = useRef(vis)
 
-  // 新目标到达：把当前位置记为 from，新目标记为 to，重置插值时钟
-  // 关键: 用 position 的 3 个标量做 deps, 而不是 position 数组引用
-  // (Scene 每次 store 变化都生成新 array, 用 [position] 会导致 useEffect 每帧误触发 → AGV 闪烁停顿)
-  useEffect(() => {
-    // 真正位置不变时跳过 (容差 POSITION_TOLERANCE = 0.5 单位)
-    if (
-      Math.abs(toPos.current.x - position[0]) < POSITION_TOLERANCE &&
-      Math.abs(toPos.current.y - position[1]) < POSITION_TOLERANCE &&
-      Math.abs(toPos.current.z - position[2]) < POSITION_TOLERANCE
-    ) {
-      return
-    }
-    if (group.current) {
-      fromPos.current.copy(group.current.position)
-    } else {
-      fromPos.current.set(position[0], position[1], position[2])
-    }
-    toPos.current.set(position[0], position[1], position[2])
-    tStartMs.current = performance.now()
-    // 朝向目标 = from→to 方向
-    const dx = toPos.current.x - fromPos.current.x
-    const dz = toPos.current.z - fromPos.current.z
-    if (Math.abs(dx) + Math.abs(dz) > 0.01) {
-      yawTarget.current = Math.atan2(dx, dz)
-    }
-  }, [position[0], position[1], position[2]])
-
-  // 每帧：按 (now - tStart) / BACKEND_TICK_MS 计算插值进度 [0,1]，匀速过渡
+  // 全部动画逻辑在 useFrame 内完成，零 React 渲染参与位置更新
   useFrame((_state, delta) => {
     if (!group.current) return
-    if (status === 'stopped') return
-    const elapsed = performance.now() - tStartMs.current
-    const t = Math.min(1, elapsed / BACKEND_TICK_MS)
+    const live = liveAgvCache[agvId] ?? EMPTY_LIVE
+    if (!isPlaying || live.stage === 'stopped') return
+
+    // 检测位置变化 → 更新插值目标
+    const [nx, ny, nz] = live.position
+    if (
+      Math.abs(toPos.current.x - nx) > POSITION_TOLERANCE ||
+      Math.abs(toPos.current.z - nz) > POSITION_TOLERANCE
+    ) {
+      fromPos.current.copy(group.current.position)
+      toPos.current.set(nx, ny, nz)
+      tStartMs.current = performance.now()
+      const dx = nx - fromPos.current.x
+      const dz = nz - fromPos.current.z
+      if (Math.abs(dx) + Math.abs(dz) > 0.01) yawTarget.current = Math.atan2(dx, dz)
+    }
+
+    const t = Math.min(1, (performance.now() - tStartMs.current) / BACKEND_TICK_MS)
     group.current.position.lerpVectors(fromPos.current, toPos.current, t)
-    // 朝向：插值到目标 yaw（避免突然转向）
-    const cur = group.current.rotation.y
-    let diff = yawTarget.current - cur
-    // 归一到 [-pi, pi]
+
+    let diff = yawTarget.current - group.current.rotation.y
     while (diff > Math.PI) diff -= Math.PI * 2
     while (diff < -Math.PI) diff += Math.PI * 2
-    group.current.rotation.y = cur + diff * Math.min(1, delta * 8)
+    group.current.rotation.y += diff * Math.min(1, delta * 8)
+
+    // 外观属性低频更新：仅 stage/cargoType/weight 变化超阈值才触发 React
+    const prev = visRef.current
+    if (prev.stage !== live.stage || prev.cargoType !== live.cargoType || Math.abs(prev.weight - live.weight) > 5) {
+      visRef.current = live
+      setVis({ ...live })
+    }
   })
 
-  // 货物可见性只依赖 weight (不依赖 status)
-  // 之前 `weight > 1 && (status === 'moving' || 'unloading')` 在阶段切换瞬间会闪烁
-  const showCargo = weight > 1
-  const stageLabel = STAGE_TEXT[status] || status
-
-  // LED 颜色稳定化：装/卸属"工作中"统一橙黄；运/返属"行驶中"统一绿色
+  const showCargo = vis.weight > 1
+  const stageLabel = STAGE_TEXT[vis.stage] || vis.stage
   const statusLedColor =
-    status === 'loading' || status === 'unloading' ? '#ffc857' :
-    status === 'stopped' ? '#ff6b6b' :
-    '#42e07b'
+    vis.stage === 'loading' || vis.stage === 'unloading' ? '#ffc857' :
+    vis.stage === 'stopped' ? '#ff6b6b' : '#42e07b'
+  const { cargoType, weight, weightCapacity, temperature, ph, task, sourcePitNo } = vis
 
   return (
-    <group ref={group} position={position}>
+    <group
+      ref={group}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+      onPointerOut={() => setHovered(false)}
+    >
       {/* 车底盘 (扁平底座) */}
       <mesh position={[0, 0.18, 0]} castShadow>
         <boxGeometry args={[2.2, 0.3, 3.2]} />
@@ -170,7 +146,7 @@ function AGVModelImpl({
         <group position={[0, 1.25, -0.3]}>
           <mesh>
             <boxGeometry args={[1.5, 0.7, 1.8]} />
-            <meshStandardMaterial color={CARGO_COLORS[cargoType] || '#888'} roughness={0.7} />
+            <meshStandardMaterial color={CARGO_COLORS[cargoType as CargoType] || '#888'} roughness={0.7} />
           </mesh>
           {/* 货物顶部装载提示线 */}
           <mesh position={[0, 0.38, 0]}>
@@ -180,73 +156,67 @@ function AGVModelImpl({
         </group>
       )}
 
-      {/* 状态信息标签 - 始终显示完整工艺信息 */}
-      <Html position={[0, 3.5, 0]} center distanceFactor={15} style={{ pointerEvents: 'none' }}>
-        <div className="text-xs px-2 py-1.5 rounded bg-black/70 text-white border border-white/20 backdrop-blur-sm min-w-[170px]">
-          <div className="font-bold text-yellow-400 mb-0.5 flex justify-between items-center">
-            <span>{agvId}</span>
-            <span className="text-[10px] text-gray-300">{stageLabel}</span>
-          </div>
-          {task && (
-            <div className="text-[10px] text-cyan-300 mb-1 leading-tight">{task}</div>
-          )}
-          <div className="text-[10px] leading-tight space-y-0.5">
-            <div className="flex justify-between">
-              <span className="text-gray-400">货物</span>
-              <span className={weight > 0 ? 'text-white' : 'text-gray-500'}>
-                {weight > 0 ? (CARGO_NAMES[cargoType] || '物料') : '空载'}
-              </span>
+      {/* 常驻轻量标签：用 Three.js Text 替代 Html，无 DOM 投影开销 */}
+      <Text
+        position={[0, 3.2, 0]}
+        fontSize={0.55}
+        color="#faad14"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.04}
+        outlineColor="#000"
+        renderOrder={1}
+      >
+        {agvId}
+      </Text>
+      {/* 详细信息面板：仅 hover 时显示，避免 15+ Html 常驻 useFrame DOM 投影 */}
+      {hovered && (
+        <Html position={[0, 4.5, 0]} center distanceFactor={15} style={{ pointerEvents: 'none' }}>
+          <div className="text-xs px-2 py-1.5 rounded bg-black/70 text-white border border-white/20 backdrop-blur-sm min-w-[170px]">
+            <div className="font-bold text-yellow-400 mb-0.5 flex justify-between items-center">
+              <span>{agvId}</span>
+              <span className="text-[10px] text-gray-300">{stageLabel}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">载重</span>
-              <span className="text-orange-300">{weight.toFixed(0)} / {weightCapacity.toFixed(0)} kg</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">温度</span>
-              <span className={temperature > 60 ? 'text-red-400' : temperature > 40 ? 'text-yellow-300' : 'text-green-400'}>
-                {temperature.toFixed(1)}°C
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">pH</span>
-              <span className="text-blue-300">{ph.toFixed(2)}</span>
-            </div>
-            {sourcePitNo && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">来源池</span>
-                <span className="text-yellow-200">{sourcePitNo}</span>
-              </div>
+            {task && (
+              <div className="text-[10px] text-cyan-300 mb-1 leading-tight">{task}</div>
             )}
+            <div className="text-[10px] leading-tight space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-gray-400">货物</span>
+                <span className={weight > 0 ? 'text-white' : 'text-gray-500'}>
+                  {weight > 0 ? (CARGO_NAMES[cargoType as CargoType] || '物料') : '空载'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">载重</span>
+                <span className="text-orange-300">{weight.toFixed(0)} / {weightCapacity.toFixed(0)} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">温度</span>
+                <span className={temperature > 60 ? 'text-red-400' : temperature > 40 ? 'text-yellow-300' : 'text-green-400'}>
+                  {temperature.toFixed(1)}°C
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">pH</span>
+                <span className="text-blue-300">{ph.toFixed(2)}</span>
+              </div>
+              {sourcePitNo && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">来源池</span>
+                  <span className="text-yellow-200">{sourcePitNo}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Html>
+        </Html>
+      )}
     </group>
   )
 }
 
 /**
- * 自定义浅比较：
- * - 位置在容差内不算变化（让 React 跳过整个子树 reconciliation，
- *   AGVModel 内的 useFrame 仍会平滑插值到新目标）
- * - 数值字段用阈值比较，避免浮点抖动触发 8×Html DOM 重建
+ * props 只有 agvId + isPlaying，两者在 AGV 生命周期内基本不变。
+ * 所有动画/外观通过 liveAgvCache + useFrame 驱动，完全绕开 React reconciliation。
  */
-export default memo(AGVModelImpl, (prev, next) => {
-  if (prev.agvId !== next.agvId) return false
-  if (prev.status !== next.status) return false
-  if (prev.cargoType !== next.cargoType) return false
-  if (prev.task !== next.task) return false
-  if (prev.sourcePitNo !== next.sourcePitNo) return false
-  // 位置容差：0.25 单位（小于 AGVModel 内部 POSITION_TOLERANCE=0.3，
-  // 确保任何能触发内部插值重启的位置变化都会让 memo 返回 false 重渲染组件）
-  if (
-    Math.abs((prev.position?.[0] ?? 0) - (next.position?.[0] ?? 0)) > 0.25 ||
-    Math.abs((prev.position?.[1] ?? 0) - (next.position?.[1] ?? 0)) > 0.25 ||
-    Math.abs((prev.position?.[2] ?? 0) - (next.position?.[2] ?? 0)) > 0.25
-  ) return false
-  // 数值字段阈值
-  if (Math.abs((prev.weight ?? 0) - (next.weight ?? 0)) > 1) return false
-  if (Math.abs((prev.temperature ?? 0) - (next.temperature ?? 0)) > 0.5) return false
-  if (Math.abs((prev.ph ?? 0) - (next.ph ?? 0)) > 0.05) return false
-  if ((prev.weightCapacity ?? 0) !== (next.weightCapacity ?? 0)) return false
-  return true
-})
+export default memo(AGVModelImpl)

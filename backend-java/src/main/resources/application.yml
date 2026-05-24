@@ -1,0 +1,40 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: brewing-digital-twin
+  
+  datasource:
+    url: jdbc:h2:file:./data/brewing;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# ==================== 应用业务配置 ====================
+app:
+  name: 智慧酒厂数字孪生系统
+  version: 1.0.0
+  # 数据初始化规模 (DataInitializer 仅在数据库为空时使用)
+  total-pits: 100                # 100 窖池: A/B/C/D 各 25 池
+  total-devices: 53              # 5 核心设备 + 8 AGV + 40 辅助监测设备
+  simulator:
+    enabled: true                # 关闭则停止所有传感器数据生成 + 工艺仿真推进
+    interval: 5000               # SimulatorService 传感器采样周期 (ms)
+    cleanup-interval: 3600000    # SimulatorService 历史数据清理周期 (ms, 1 小时)
+    # 注: 工艺主仿真器 ProcessSimulationService 的 1 秒/拍 节奏由 @Scheduled 注解硬编码

@@ -1,0 +1,72 @@
+# ============== Java ==============
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.idea/
+.vscode/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+hs_err_pid*.log
+
+# ============== Node ==============
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ============== Python ==============
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============== H2 / 数据库文件 ==============
+# 后端运行时会在 data/ 目录写入 H2 文件数据库, 不应提交
+data/
+**/data/*.db
+**/data/*.mv.db
+**/data/*.trace.db
+
+# ============== 运行时产物 ==============
+backend-run.log
+frontend-run.log
+*.pid
+nohup.out
+verify.txt
+debug.txt
+diuzao.txt
+status.txt
+r.txt
+s.txt
+snap.json
+tsc.txt
+
+# ============== OS ==============
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============== IDE/编辑器 ==============
+*.swp
+*.swo
+*~
+.history/

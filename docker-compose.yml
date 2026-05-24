@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend-java
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      # 容器内允许的前端域名 (逗号分隔). 生产时改成你的真实域名, 例: https://twin.example.com
+      - APP_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      # 持久化 H2 数据库, 容器重启不丢数据
+      - brewing-data:/app/data
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  brewing-data:

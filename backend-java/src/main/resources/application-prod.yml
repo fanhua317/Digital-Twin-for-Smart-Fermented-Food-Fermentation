@@ -1,0 +1,34 @@
+# ==================== 生产环境配置 ====================
+# 通过 SPRING_PROFILES_ACTIVE=prod 激活 (docker-compose.yml 已默认设置)
+# 仅覆盖 application.yml 中需要为生产收紧的设置, 其余继承默认.
+
+spring:
+  jpa:
+    hibernate:
+      # 生产环境禁止自动改表; 升级时请使用 Flyway/Liquibase 做 schema 迁移
+      ddl-auto: validate
+    show-sql: false
+
+  h2:
+    console:
+      # 生产关闭 H2 Web 控制台 (避免泄露内部数据)
+      enabled: false
+
+# CORS 收敛到具体域名 (从环境变量 APP_CORS_ORIGINS 读取, 多个域名用逗号分隔)
+# docker-compose.yml 默认: http://localhost:3000,http://127.0.0.1:3000
+app:
+  cors:
+    origins: ${APP_CORS_ORIGINS:http://localhost:3000}
+
+# 关闭 Spring Boot Actuator 默认端点暴露 (如果以后启用 actuator)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: WARN
+    com.brewery.digitaltwin: INFO
+    org.hibernate.SQL: WARN

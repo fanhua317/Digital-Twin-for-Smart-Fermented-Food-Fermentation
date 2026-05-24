@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -46,18 +46,18 @@ const STAGE_TEXT: Record<string, string> = {
 }
 
 /**
- * 后端每秒推送一帧 AGV 目标位置。
- * 我们用 1200ms 作为插值窗 (略大于 1000ms tick), 这样:
- *   - AGV 在 1.0s 时还在向 toPos 移动 (走了 ~83% 路程)
- *   - 此时下一帧 tick 到来, fromPos = 当前位置 (mid-flight), toPos = 新目标
- *   - 自然衔接, 没有 "到达后等待" 的停顿感
+ * 后端每 500ms 推送一帧 AGV 目标位置 (ProcessSimulationService.tick 频率 500ms)。
+ * 插值窗设为 600ms (略大于 500ms tick), 这样:
+ *   - AGV 在 0.5s 时走了 ~83% 路程, 此时新帧到来
+ *   - fromPos = 当前位置 (mid-flight), toPos = 新目标 → 持续匀速移动
+ *   - 永远不会 "到达后等待", 视觉上完全连续
  *
- * 容差: 0.5 单位. 后端位置抖动 < 0.5 不触发插值重启 (避免浮点抖动导致的微闪)
+ * 容差: 0.3 单位 (因 500ms 步长更小，对应 AGV 单帧位移更短)
  */
-const BACKEND_TICK_MS = 1200
-const POSITION_TOLERANCE = 0.5
+const BACKEND_TICK_MS = 600
+const POSITION_TOLERANCE = 0.3
 
-export default function AGVModel({
+function AGVModelImpl({
   agvId,
   position,
   status,
@@ -223,3 +223,30 @@ export default function AGVModel({
     </group>
   )
 }
+
+/**
+ * 自定义浅比较：
+ * - 位置在容差内不算变化（让 React 跳过整个子树 reconciliation，
+ *   AGVModel 内的 useFrame 仍会平滑插值到新目标）
+ * - 数值字段用阈值比较，避免浮点抖动触发 8×Html DOM 重建
+ */
+export default memo(AGVModelImpl, (prev, next) => {
+  if (prev.agvId !== next.agvId) return false
+  if (prev.status !== next.status) return false
+  if (prev.cargoType !== next.cargoType) return false
+  if (prev.task !== next.task) return false
+  if (prev.sourcePitNo !== next.sourcePitNo) return false
+  // 位置容差：0.25 单位（小于 AGVModel 内部 POSITION_TOLERANCE=0.3，
+  // 确保任何能触发内部插值重启的位置变化都会让 memo 返回 false 重渲染组件）
+  if (
+    Math.abs((prev.position?.[0] ?? 0) - (next.position?.[0] ?? 0)) > 0.25 ||
+    Math.abs((prev.position?.[1] ?? 0) - (next.position?.[1] ?? 0)) > 0.25 ||
+    Math.abs((prev.position?.[2] ?? 0) - (next.position?.[2] ?? 0)) > 0.25
+  ) return false
+  // 数值字段阈值
+  if (Math.abs((prev.weight ?? 0) - (next.weight ?? 0)) > 1) return false
+  if (Math.abs((prev.temperature ?? 0) - (next.temperature ?? 0)) > 0.5) return false
+  if (Math.abs((prev.ph ?? 0) - (next.ph ?? 0)) > 0.05) return false
+  if ((prev.weightCapacity ?? 0) !== (next.weightCapacity ?? 0)) return false
+  return true
+})

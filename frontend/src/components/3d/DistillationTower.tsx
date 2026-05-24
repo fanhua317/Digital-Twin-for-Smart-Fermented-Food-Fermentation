@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Html } from '@react-three/drei'
 
 interface DistillationTowerProps {
@@ -14,7 +14,7 @@ interface DistillationTowerProps {
   }
 }
 
-export default function DistillationTower({ position, status, materialInfo }: DistillationTowerProps) {
+function DistillationTowerImpl({ position, status, materialInfo }: DistillationTowerProps) {
   const [showPanel, setShowPanel] = React.useState(true)
 
   const handleClick = (e: any) => {
@@ -116,3 +116,18 @@ export default function DistillationTower({ position, status, materialInfo }: Di
     </group>
   )
 }
+
+export default memo(DistillationTowerImpl, (prev, next) => {
+  if (prev.status !== next.status) return false
+  if (prev.position[0] !== next.position[0] ||
+      prev.position[1] !== next.position[1] ||
+      prev.position[2] !== next.position[2]) return false
+  const a = prev.materialInfo, b = next.materialInfo
+  if (!a || !b) return a === b
+  if (a.inputName !== b.inputName || a.outputName !== b.outputName) return false
+  if (Math.abs(a.inputLevel - b.inputLevel) > 1) return false
+  if (Math.abs(a.outputLevel - b.outputLevel) > 1) return false
+  if ((a.auxName ?? '') !== (b.auxName ?? '')) return false
+  if (Math.abs((a.auxLevel ?? 0) - (b.auxLevel ?? 0)) > 1) return false
+  return true
+})

@@ -48,7 +48,7 @@ public class Pit {
     private Double entryTemperature = 20.0;
 
     /** 糟醅类型：zhapei(楂醅)/hongzao(红糟)/diuzao(丢糟) - 按工艺主要分 3 类 */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'zhapei'")
     private String grainCategory = "zhapei";
 
     /** 入窖水分 (%) - 工艺典型 51-55% */

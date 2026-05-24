@@ -395,8 +395,11 @@ public class ProcessSimulationService {
 
     // ==================== 主仿真节拍 ====================
 
-    /** 1 秒一拍 - 工艺主循环 */
-    @Scheduled(fixedRate = 1000)
+    /** 每 2 拍累加 1 秒 uptime（保持原 1Hz 计数语义） */
+    private int tickCounter = 0;
+
+    /** 0.5 秒一拍 - 工艺主循环（提高节奏让 AGV 移动更顺滑，物料/发酵速率不变） */
+    @Scheduled(fixedRate = 500)
     @Transactional
     public void tick() {
         if (!enabled) return;
@@ -407,8 +410,9 @@ public class ProcessSimulationService {
                 broadcastSnapshot();
                 return;
             }
-            double dt = 1.0; // 实秒
-            uptimeSeconds.incrementAndGet();
+            double dt = 0.5; // 实秒（之前 1.0；速率参数 dt 自适应，整体节奏不变）
+            // 每 2 拍累加 1 秒 uptime（保持原 1Hz 计数语义）
+            if ((++tickCounter & 1) == 0) uptimeSeconds.incrementAndGet();
 
             tickEquipments(dt);
             tickAgvs(dt);
